@@ -82,11 +82,12 @@ class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.mobs, platforms, (mob, ground) => {
             const dropDistance = mob.y - mob.highestY; // 떨어진 거리 계산
             
-            if (dropDistance > 400) { //400 픽셀 이상 높이에서 떨어졌다면
+            if (dropDistance > 400 && mob.y > mob.staryY ) { //400 픽셀 이상 높이에서 떨어졌다면
                 this.updateScore(1); // 점수 업데이트
                 //mob.destroy();
                 this.fadeOutAndDestroy(this, mob);
             } else {
+                mob.y = mob.startY? mob.startY : mob.y; // 낙차가 충분하지 않으면 원래 위치로 복귀
                 mob.isThrown = false;
                 mob.highestY = mob.y; // 높이 초기화
                 mob.body.setVelocityX(-mob.speed);
@@ -104,6 +105,8 @@ class GameScene extends Phaser.Scene {
         // 입력 이벤트 설정
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
             if (this.isGameOver || this.isPaused) return;
+            gameObject.staryY = gameObject.y; // 드래그 시작 시의 y 위치 저장
+
             gameObject.isDragging = true; // 드래그 중임을 표시하는 속성
             gameObject.x = dragX;
             gameObject.y = dragY;
@@ -193,12 +196,12 @@ class GameScene extends Phaser.Scene {
                     // 뒤로 물러나는 애니메이션
                     this.tweens.add({
                         targets: mob,
-                        x: 80,          // 100에서 120으로 살짝 밀려남
-                        duration: 100,
+                        x: 60,          // 100에서 120으로 살짝 밀려남
+                        duration: 150,
                         yoyo: true,      // 다시 100으로 돌아옴
                         ease: 'Back.easeOut',
                         onComplete: () => {
-                            if (mob.active) mob.x = 100; // 위치 재고정
+                            if (mob.active) mob.x = 80+Math.random()*20 ; // 위치 재고정
                         }
                     });
                 }
@@ -249,7 +252,7 @@ class GameScene extends Phaser.Scene {
     fadeOutAndDestroy = (scene, target) => {
         // 1. 물리 엔진 비활성화 (사라지는 동안 충돌하거나 움직이지 않게 함)
         target.body.enable = false;
-
+        this.mobBloodEffect(target); // 피 효과 추가
         // 2. 트윈 애니메이션 시작
         scene.tweens.add({
             targets: target,
@@ -261,6 +264,17 @@ class GameScene extends Phaser.Scene {
             }
         });
     };
+    mobBloodEffect(mob){
+        const blood = this.add.ellipse(mob.x, mob.y+mob.height/3, 60,20, 0xff0000).setAlpha(0.8);
+        this.tweens.add({
+            targets: blood,
+            alpha: 0,
+            scale: 2,
+            duration: 500,
+            ease: 'Cubic.easeOut',
+            onComplete: () => blood.destroy()
+        });
+    }
 
     // GameScene 내부의 gameOver 함수
     gameOver() {
