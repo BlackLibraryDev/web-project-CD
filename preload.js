@@ -17,13 +17,27 @@ class PreloadScene extends Phaser.Scene {
         // 2. 모든 리소스 로드
         this.load.image('background1', 'assets/bg1.png');
         this.load.image('mob1', 'assets/mob1.png');
+
+        this.load.spritesheet('mobsprite1', 'assets/mobsprite1.png', { frameWidth: 128, frameHeight: 128});
+        
         //this.load.image('wall', 'assets/wall.png');
         // 사운드나 폰트도 여기서 로드
         
         // 3. 로딩이 완료되면 실행될 이벤트
         this.load.on('complete', () => {
             loadingText.destroy();
-            this.scene.start('GameScene'); // 로딩 완료 후 게임씬으로 이동
+            //this.scene.start('GameScene'); // 로딩 완료 후 게임씬으로 이동
         });
     }
+    create(){
+        this.anims.create({
+            key: 'mob1_walk',
+            frames: this.anims.generateFrameNumbers('mobsprite1', { start: 0, end: 1 }),
+            frameRate: 4, 
+            repeat: -1
+        });
+        // 4. 애니메이션 생성이 끝난 직후 다음 씬으로 이동합니다.
+        this.scene.start('GameScene');
+    }
+    
 }

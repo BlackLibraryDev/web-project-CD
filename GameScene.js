@@ -19,51 +19,19 @@ class GameScene extends Phaser.Scene {
     scoreText;
     //성의 체력 관련 변수
     healthBar;
-    castleHP = 100;
+    castleHP = 1;
     hpText;
 
     create() {
-       this.scene.launch('UIScene');
+       
        this.isGameOver=false;
        this.isPaused=false;
        this.score=0;
        this.castleHP=100;
-
-
-        // 일시정지 버튼 생성 (텍스트 형태)
-        this.pauseBtn = this.add.text(20, 20, '⏸', {
-            fontSize: '24px',
-            fill: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 15, y: 15 }
-        })
-        .setInteractive({ useHandCursor: true }) // 클릭 가능하게 설정
-        .setScrollFactor(0); // 카메라가 움직여도 고정되게 함
-        this.pauseBtn.on('pointerdown', () => {
-            this.togglePause();
-        });
-        this.pauseBtn.setDepth(10); 
-
-        this.hpText = this.add.text(90, 20, 'Castle HP: 100', {
-            fontSize: '32px',
-            fill: '#ff0000',
-            fontStyle: 'bold'
-        });
-        this.hpText.setDepth(10); // UI 요소보다 위에 표시
-        // 체력 바를 그릴 그래픽 객체 생성
-        this.healthBar = this.add.graphics();
-        this.drawHealthBar(this.healthBar, this.castleHP, 90, 50 ); // 위치 (20, 60)
-        this.healthBar.setDepth(10); // UI 요소보다 위에 표시
-        // 버튼 클릭 이벤트
-        
-
-
-        this.scoreText = this.add.text(config.width - 20, 20, 'Score: 0', {
-            fontSize: '32px',
-            fill: '#000000',
-            fontStyle: 'bold'
-        }).setOrigin(1, 0); // 기준점을 우측 상단으로 설정하여 글자가 왼쪽으로 늘어나게 함
-        this.scoreText.setDepth(8);
+        // 공용 보관함에 값을 저장 (이 순간 모든 씬이 알게 됨)
+        this.registry.set('score', this.score);
+        this.registry.set('castleHP', this.castleHP);
+        this.scene.launch('UIScene');
 
         
 
@@ -83,7 +51,9 @@ class GameScene extends Phaser.Scene {
             const dropDistance = mob.y - mob.highestY; // 떨어진 거리 계산
             
             if (dropDistance > 400 && mob.y > mob.staryY ) { //400 픽셀 이상 높이에서 떨어졌다면
-                this.updateScore(1); // 점수 업데이트
+
+                this.updateScore(10);
+
                 //mob.destroy();
                 this.fadeOutAndDestroy(this, mob);
             } else {
@@ -127,7 +97,10 @@ class GameScene extends Phaser.Scene {
 
     spawnMob() {
         //몹 생성
-        const mob = this.mobs.create(  config.width , config.height -this.groundHeight*2, 'mob1');
+        //const mob = this.mobs.create(  config.width , config.height -this.groundHeight*2, 'mob1');
+        const mob = this.mobs.create( config.width , config.height - this.groundHeight*2, 'mobsprite1');
+        mob.anims.play('mob1_walk');
+
         mob.setInteractive({ draggable: true });
         
         // 1. 바닥과의 마찰력을 0으로 설정
@@ -153,6 +126,7 @@ class GameScene extends Phaser.Scene {
 
     update(time, delta) { // time은 게임 시작 후 경과된 전체 시간(ms)
         if (this.isGameOver || this.isPaused) return;
+ 
 
         this.mobs.getChildren().forEach(mob => {
             mob.setDepth(mob.y);
@@ -214,25 +188,10 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    ///점수추가
     updateScore(points) {
-        this.score += points;
-        this.scoreText.setText('Score: ' + this.score);
-        
-        // 점수가 오를 때 살짝 커졌다 작아지는 효과 (선택 사항)
-        //scoreText.setScale(1.2);
-        //setTimeout(() => scoreText.setScale(1), 100);
-    }
-    drawHealthBar(graphics, hp, x=90, y =50) {
-        graphics.clear();
-
-        // 1. 배경 (검정색)
-        graphics.fillStyle(0x000000);
-        graphics.fillRect(x, y, 200, 20);
-
-        // 2. 현재 체력 (빨간색)
-        // 체력 비율에 따라 가로 길이를 조절함 (200px * hp/100)
-        graphics.fillStyle(0xff0000);
-        graphics.fillRect(x, y, 200 * (hp / 100), 20);
+        this.score += points; // 점수 추가
+        this.registry.set('score', this.score); // 공용 보관함에 업데이트된 점수 저장
     }
 
     // 대미지 함수 수정
@@ -241,10 +200,7 @@ class GameScene extends Phaser.Scene {
         this.castleHP -= amount;
         if (this.castleHP < 0) this.castleHP = 0;
         
-        // 텍스트와 체력 바를 동시에 업데이트
-        this.hpText.setText('Castle HP: ' + this.castleHP);
-        this.drawHealthBar(this.healthBar, this.castleHP);
-
+        this.registry.set('castleHP', this.castleHP); // 공용 보관함에 업데이트된 체력 저장
         if (this.castleHP <= 0) {
             this.gameOver(); 
         }
@@ -285,20 +241,7 @@ class GameScene extends Phaser.Scene {
         this.events.emit('showGameOver', { score: this.score }); // UIScene에 신호 보냄
     }
 
-    // 일시정지 버튼을 눌렀을 때
-    togglePause() {
-        this.isPaused = !this.isPaused;
-        if (this.isPaused) {
-            this.physics.pause();
-            if (this.spawnEvent) this.spawnEvent.paused = true;
-            this.events.emit('showPause'); // UIScene에 신호 보냄
-        } else {
-            this.physics.resume();
-            if (this.spawnEvent) this.spawnEvent.paused =false;
-            this.events.emit('hidePause');
-        }
-    }
-
+    
     // 게임오버 시
     handleGameOver() {
         this.physics.pause();
