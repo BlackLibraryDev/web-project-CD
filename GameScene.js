@@ -21,17 +21,53 @@ class GameScene extends Phaser.Scene {
     healthBar;
     castleHP = 1;
     hpText;
-
+    enit(){
+        // 게임이 완전히 종료될 때 실행되는 함수입니다.
+        // 여기서 리소스 정리나 이벤트 리스너 제거 등을 수행할 수 있습니다.
+        console.log("GameScene이 종료되었습니다. 리소스를 정리합니다.");
+    }
     create() {
-       
+        // 씬이 생성된 고유 ID 생성 (랜덤값)
+        this.instanceId = Math.floor(Math.random() * 1000);
+
        this.isGameOver=false;
        this.isPaused=false;
        this.score=0;
+       this.gold = 100000;
        this.castleHP=100;
-        // 공용 보관함에 값을 저장 (이 순간 모든 씬이 알게 됨)
+       this.maxCastleHP=100;
+        // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
+        this.upgrades = {
+
+            '지휘소': [
+                { tag:'wallType', name: '성채 건축술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 100},
+                { tag:'maxCastleHp', name: '성채 방어력',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 150 },
+                { tag:'wallFix', name: '성채 수리', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 150}
+            ],
+            '성당': [
+                { tag:'summon', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 150 },
+                { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 120 }
+            ],
+            '궁수양성소': [
+                { tag:'range', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120}
+            ],
+            '마술사의 샘': [
+                { tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 }
+            ]
+        };
+
+        this.registry.set('playerUpgrades', this.upgrades);
         this.registry.set('score', this.score);
+        this.registry.set('gold', this.gold);
         this.registry.set('castleHP', this.castleHP);
-        this.scene.launch('UIScene');
+        this.registry.set('maxCastleHP', this.maxCastleHP);
+    
+        
+        
+        // 여기서 UI를 다시 실행해주면 됩니다.
+        if (!this.scene.isActive('UIScene')) {
+            this.scene.launch('UIScene');
+        }
 
         
 
@@ -93,6 +129,15 @@ class GameScene extends Phaser.Scene {
             gameObject.isThrown = true;
             gameObject.isDragging = false; // 드래그 종료
         });
+
+        //
+        this.events.off('attempt-upgrade');
+        this.events.on('attempt-upgrade', (category,tag) => {
+            //console.log(`id :${this.instanceId}`)
+            this.applyUpgrade(category, tag);
+        });
+
+        
     }
 
     spawnMob() {
@@ -125,6 +170,7 @@ class GameScene extends Phaser.Scene {
 
 
     update(time, delta) { // time은 게임 시작 후 경과된 전체 시간(ms)
+        //console.log(time);
         if (this.isGameOver || this.isPaused) return;
  
 
@@ -187,7 +233,73 @@ class GameScene extends Phaser.Scene {
             }
         });
     }
+    // 강화 로직 함수
+    // 업그레이드 실행 함수 (GameScene 내부)
+    applyUpgrade(category, tag) {
+        //console.log(`강화 시도: 카테고리=${category}, 태그=${tag}`);
+        const item = this.upgrades[category].find(element => element.tag === tag);
+        //console.log('업그레이드 아이템:', item);
+        //const item = this.upgrades.find(cat => cat[0].name === category)[tag];
+        //해금체크
 
+        if(!item.unlock){
+            if(this.gold < item.cost){
+                //console.log("골드가 부족합니다.");
+                return;
+            }
+        }
+        // 1. 만렙 체크
+        if (item.level >= item.maxLevel) {
+            console.log("이미 최대 레벨입니다.");
+            return;
+        }
+
+        // 2. 비용 체크 (예시: this.gold가 있다고 가정)
+        if (this.gold < item.cost) {
+            //console.log("골드가 부족합니다.");
+            return;
+        }
+
+        // 3. 비용 차감 및 레벨업
+        this.gold -= item.cost;
+        this.registry.set('gold', this.gold); // 변경된 골드 레지스트리에 저장
+        if(item.unlock){
+            
+        }else{
+            item.unlock = true; // 해금 처리
+            item.level =item.maxLevel;
+            console.log(`${item.name}이(가) 해금되었습니다!`);
+        }
+        if(item.level>-1){
+            
+            item.level++;
+            item.cost = Math.floor(item.cost * 1.5); // 다음 레벨 비용 상승
+        }else{
+            //-1은 무한히 가능한 기능임(수리 등)
+        }
+        
+        
+
+        // 4. 태그에 따른 실제 효과 적용 (이 부분이 switch 문 역할)
+        
+            
+        switch (item.tag) {
+            case 'maxCastleHp':
+                this.maxCastleHP += 20; // 최대 체력 증가       
+                this.registry.set('maxCastleHP', this.maxCastleHP); // 변경된 최대 체력 레지스트리에 저장
+                break;
+            case 'wallFix':
+                //Level 0
+                this.castleHP += 20; // 현재 체력 증가
+                if (this.castleHP > this.maxCastleHP) this.castleHP = this.maxCastleHP; // 최대 체력 초과 방지
+                this.registry.set('castleHP', this.castleHP); // 변경된 현재 체력 레지스트리에 저장
+                break;
+            // 다른 태그에 대한 효과도 여기에 추가 가능
+        }   
+
+        // 5. 변경된 데이터 전체를 다시 registry에 저장 (UIScene 갱신용)
+        this.registry.set('playerUpgrades', this.upgrades);
+    }
     ///점수추가
     updateScore(points) {
         this.score += points; // 점수 추가
@@ -239,12 +351,5 @@ class GameScene extends Phaser.Scene {
 
         // UIScene을 GameScene 위에 띄움 (데이터 전달 가능)
         this.events.emit('showGameOver', { score: this.score }); // UIScene에 신호 보냄
-    }
-
-    
-    // 게임오버 시
-    handleGameOver() {
-        this.physics.pause();
-        this.events.emit('showGameOver', { score: this.score });
     }
 }
