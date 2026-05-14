@@ -56,9 +56,60 @@ class UIScene extends Phaser.Scene {
 
 
 
-        // 3. 이벤트 리스너 (GameScene에서 보낸 신호를 받음)
+        
+        //점수 및 체력 초기화
+        this.hpText = this.add.text(90, 20, 'Castle HP: 100', {
+            fontSize: '32px',
+            fill: '#ff0000',
+            fontStyle: 'bold'
+        });
+        this.hpText.setDepth(10); // UI 요소보다 위에 표시
+        // 체력 바를 그릴 그래픽 객체 생성
+        this.healthBar = this.add.graphics();
+        this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
+        this.healthBar.setDepth(10); // UI 요소보다 위에 표시
+           this.scoreText = this.add.text(config.width - 20, 20, 'Score: 0', {
+            fontSize: '32px',
+            fill: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(1, 0); // 기준점을 우측 상단으로 설정하여 글자가 왼쪽으로 늘어나게 함
+        this.scoreText.setDepth(8);
+        this.updateScore( this.registry.get('score') || 0);
+        this.castleHP = this.registry.get('castleHP') || 100;
+        this.maxCastleHP = this.registry.get('maxCastleHP') || 100;
+        this.drawHealthBar(this.healthBar);
+
+        this.waveText = this.add.text(config.width / 2, 20, 'Wave 0', {
+            fontSize: '48px',
+            fill: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0); // 기준점을 중앙 상단으로 설정
+        this.waveText.setDepth(8);
+        
+        this.waveBar = this.add.graphics();
+        this.waveBar.setDepth(8);
+        this.drawWaveBar(this.waveBar);
+
+        // 일시정지 버튼 생성 (텍스트 형태)
+        this.pauseBtn = this.add.text(20, 20, '⏸', {
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#333333',
+            padding: { x: 15, y: 15 }
+        })
+        .setInteractive({ useHandCursor: true }) // 클릭 가능하게 설정
+        .setScrollFactor(0); // 카메라가 움직여도 고정되게 함
+        this.pauseBtn.on('pointerdown', () => {
+            this.togglePause();
+        });
+        this.pauseBtn.setDepth(10); 
+        
+// 3. 이벤트 리스너 (GameScene에서 보낸 신호를 받음)
         const gameScene = this.scene.get('GameScene');
         
+        gameScene.events.on('waveCleared', () => {
+            this.upgradeWindow.setVisible(true);
+        });
         gameScene.events.on('showPause', () => {
             this.pauseMenu.setVisible(true);
         });
@@ -77,6 +128,11 @@ class UIScene extends Phaser.Scene {
 
         // 점수 업데이트 이벤트 리스너
         // 'changedata-이름' 형식을 사용합니다.
+        this.registry.events.off('changedata-wave');
+        this.registry.events.on('changedata-wave',(parent,newValue) =>{
+            this.wave =
+            this.drawWaveBar(this.waveBar);
+        });
         this.registry.events.off('changedata-score'); // 기존 리스너 제거 (중복 방지)
         this.registry.events.on('changedata-score', (parent, newValue) => {
             this.updateScore(newValue);
@@ -106,43 +162,7 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(this.currentCategory);
             }
         }, this);
-        //점수 및 체력 초기화
-        this.hpText = this.add.text(90, 20, 'Castle HP: 100', {
-            fontSize: '32px',
-            fill: '#ff0000',
-            fontStyle: 'bold'
-        });
-        this.hpText.setDepth(10); // UI 요소보다 위에 표시
-        // 체력 바를 그릴 그래픽 객체 생성
-        this.healthBar = this.add.graphics();
-        this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
-        this.healthBar.setDepth(10); // UI 요소보다 위에 표시
-           this.scoreText = this.add.text(config.width - 20, 20, 'Score: 0', {
-            fontSize: '32px',
-            fill: '#000000',
-            fontStyle: 'bold'
-        }).setOrigin(1, 0); // 기준점을 우측 상단으로 설정하여 글자가 왼쪽으로 늘어나게 함
-        this.scoreText.setDepth(8);
-        this.updateScore( this.registry.get('score') || 0);
-        this.castleHP = this.registry.get('castleHP') || 100;
-        this.maxCastleHP = this.registry.get('maxCastleHP') || 100;
-        this.drawHealthBar(this.healthBar);
-    
 
-        // 일시정지 버튼 생성 (텍스트 형태)
-        this.pauseBtn = this.add.text(20, 20, '⏸', {
-            fontSize: '24px',
-            fill: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 15, y: 15 }
-        })
-        .setInteractive({ useHandCursor: true }) // 클릭 가능하게 설정
-        .setScrollFactor(0); // 카메라가 움직여도 고정되게 함
-        this.pauseBtn.on('pointerdown', () => {
-            this.togglePause();
-        });
-        this.pauseBtn.setDepth(10); 
-        
 
         this.events.once('shutdown', () => {
             this.registry.events.off('changedata-score'); // 기존 리스너 제거 (중복 방지)
@@ -155,6 +175,20 @@ class UIScene extends Phaser.Scene {
     }
     updateScore(points) {
         this.scoreText.setText('Score: ' + points);
+    }
+    drawWaveBar(graphics){
+        
+        const { width, height } = this.cameras.main;
+        graphics.clear();
+        // 1. 배경 (검정색)
+        graphics.fillStyle(0x000000);
+        graphics.fillRect( width/2 -100 , 65, 200, 10);
+
+        // 남은 시간 비율에 따라 가로 길이를 조절함 (200px * hp/100)
+        graphics.fillStyle(  '#f82cffff');
+        graphics.fillRect(width/2 -100 , 65, 200 * (this.castleHP / this.maxCastleHP), 10);
+
+        this.waveText.setText(`Wave ${this.registry.get('wave') || 1}`);
     }
     drawHealthBar(graphics, x=90, y =50) {
         graphics.clear();
@@ -179,7 +213,7 @@ class UIScene extends Phaser.Scene {
         this.upgradeWindow = this.add.container(width / 2, height / 2).setVisible(false);
         
         // 배경판
-        const bg = this.add.rectangle(0, 0, 800, 500, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
+        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
         this.upgradeWindow.add(bg);
 
         // 2. 내용이 표시될 서브 컨테이너 (여기에 리스트를 그립니다)
@@ -195,6 +229,22 @@ class UIScene extends Phaser.Scene {
         this.upgradeWindow.add(costTxt);    
         this.costTxt = costTxt; // 비용 텍스트 객체 저장
         this.fcostTxt(this.registry.get('gold') || 0); // 초기 비용 텍스트 설정
+
+        const nextWaveBtn = this.add.text(0, 260, '다음 웨이브', {
+            fontSize: '28px',
+            fill: '#ffffff',
+            backgroundColor: '#333333',
+            padding: { x: 20, y: 10 }
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true }); // 마우스 커서를 손모양으로 변경
+        nextWaveBtn.on('pointerdown', () => {
+            this.upgradeWindow.setVisible(false);
+            this.scene.get('GameScene').events.emit('startNextWave'); // GameScene에 다음 웨이브 시작 신호 보냄
+            this.isPaused=false;
+        });
+        this.upgradeWindow.add(nextWaveBtn);
+
         // 2. 카테고리 이름들만 배열로 추출
         // 결과: ['지휘소', '성당', '궁수양성소', '마술사의 샘']
         // 레지스트리에서 최신 업그레이드 정보 가져오기
@@ -316,6 +366,8 @@ class UIScene extends Phaser.Scene {
 
     // 일시정지 버튼을 눌렀을 때
     togglePause() {
+        if(this.upgradeWindow.visible){return}//업그레이드 중에는 일시정지 토글 안되게
+
         this.isPaused = !this.isPaused;
         this.pauseMenu.setVisible(this.isPaused);
         if (this.isPaused) {

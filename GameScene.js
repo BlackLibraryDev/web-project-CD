@@ -16,11 +16,12 @@ class GameScene extends Phaser.Scene {
     acceleration = 4; // 드래그 가속도 (던지는 힘에 영향을 줌)
     // score 관련 변수들
     score = 0;
-    scoreText;
+    gold =0;
     //성의 체력 관련 변수
-    healthBar;
-    castleHP = 1;
-    hpText;
+    castleHP = 100;
+    maxCastleHP = 100;
+    wave = 1;
+    isWaveInProgress = true;
     enit(){
         // 게임이 완전히 종료될 때 실행되는 함수입니다.
         // 여기서 리소스 정리나 이벤트 리스너 제거 등을 수행할 수 있습니다.
@@ -33,6 +34,8 @@ class GameScene extends Phaser.Scene {
        this.isGameOver=false;
        this.isPaused=false;
        this.score=0;
+       this.wave=1;
+       this.isWaveInProgress=true;
        this.gold = 100000;
        this.castleHP=100;
        this.maxCastleHP=100;
@@ -61,7 +64,7 @@ class GameScene extends Phaser.Scene {
         this.registry.set('gold', this.gold);
         this.registry.set('castleHP', this.castleHP);
         this.registry.set('maxCastleHP', this.maxCastleHP);
-    
+        this.registry.set('wave', this.wave);
         
         
         // 여기서 UI를 다시 실행해주면 됩니다.
@@ -99,18 +102,17 @@ class GameScene extends Phaser.Scene {
                 mob.body.setVelocityX(-mob.speed);
             }
         });
-
-        // 2초마다 몹 생성
-        this.spawnEvent = this.time.addEvent({
-            delay: 2000,
-            callback: this.spawnMob,
-            callbackScope: this,
-            loop: true
-        });
+        //웨이브 시작
+        this.waveStart();
 
         // 입력 이벤트 설정
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
             if (this.isGameOver || this.isPaused) return;
+            if(!gameObject.canThrown) {
+                // 던질 수 없는 상태라면 드래그 무시
+                return;
+            } 
+
             gameObject.staryY = gameObject.y; // 드래그 시작 시의 y 위치 저장
 
             gameObject.isDragging = true; // 드래그 중임을 표시하는 속성
@@ -121,6 +123,7 @@ class GameScene extends Phaser.Scene {
 
         this.input.on('dragend', (pointer, gameObject) => {
             if (this.isGameOver || this.isPaused) return;
+            if(!gameObject.canThrown) return; // 던질 수 없는 상태라면 드래그 무시
             // 던지는 속도 계산 (마우스 이동 속도 반영)
             const dragVelocity = pointer.velocity;
             gameObject.body.setVelocity(dragVelocity.x * this.acceleration, dragVelocity.y *this.acceleration);
@@ -130,7 +133,18 @@ class GameScene extends Phaser.Scene {
             gameObject.isDragging = false; // 드래그 종료
         });
 
-        //
+
+
+        // 3. 이벤트 리스너 (GameScene에서 보낸 신호를 받음)
+        this.events.off('wavecleared'); 
+
+        this.events.off('startNextWave')
+;        this.events.on('startNextWave', () => {
+            this.wave++;
+            this.timer = 10000;
+            this.registry.set('wave', this.wave);
+            this.waveStart(this.timer);
+        });
         this.events.off('attempt-upgrade');
         this.events.on('attempt-upgrade', (category,tag) => {
             //console.log(`id :${this.instanceId}`)
@@ -139,7 +153,32 @@ class GameScene extends Phaser.Scene {
 
         
     }
-
+    waveStart(delayTimer = 10000) {
+        console.log(`웨이브 ${this.wave} 시작!`);
+        this.isPaused=false;
+        this.isWaveInProgress = true;
+        this.spawnTimers = {};
+        // 2초마다 몹 생성
+        this.spawnTimers['normal'] = this.time.addEvent({
+            delay: 2000,
+            callback: this.spawnMob,
+            callbackScope: this,
+            loop: true
+        });
+        this.spawnWaveTimer = this.time.addEvent({
+            delay: delayTimer , // 일정 시간 후 웨이브 종료
+            callback: ()=>{ 
+                this.isWaveInProgress =false; 
+                Object.values(this.spawnTimers).forEach(timer => {
+                    if (timer) timer.remove(); // 또는 timer.destroy();
+                });
+                this.spawnTimers = {};
+                console.log("웨이브 종료, 적들이 탈주합니다")
+                        },
+            callbackScope: this,
+            loop:false
+        });
+    }
     spawnMob() {
         //몹 생성
         //const mob = this.mobs.create(  config.width , config.height -this.groundHeight*2, 'mob1');
@@ -163,6 +202,7 @@ class GameScene extends Phaser.Scene {
         mob.body.setOffset(0, offsetY);
 
         mob.speed = 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+        mob.canThrown = true; // 던질 수 있는 상태인지 여부 (추가)
         mob.isThrown = false;
         mob.isDragging  = false;
         mob.highestY = mob.y;
@@ -172,7 +212,15 @@ class GameScene extends Phaser.Scene {
     update(time, delta) { // time은 게임 시작 후 경과된 전체 시간(ms)
         //console.log(time);
         if (this.isGameOver || this.isPaused) return;
- 
+        
+        if(this.mobs.getChildren().length <= 0 && !this.isWaveInProgress){
+            this.isPaused=true;
+            this.events.emit('waveCleared'); // UIScene에 웨이브 클리어 신호 보냄
+            console.log("웨이브 클리어! 잠시 휴식...");
+            //다음 웨이브 시작
+            //this.wave++;
+            //this.waveStart();
+        }
 
         this.mobs.getChildren().forEach(mob => {
             mob.setDepth(mob.y);
@@ -180,6 +228,7 @@ class GameScene extends Phaser.Scene {
             if (mob.isThrown && mob.y < mob.highestY) {
                 mob.highestY = mob.y;
             }
+            
             // 왼쪽 벽 막기
             if (mob.x < 0) {
                 mob.x = 0;
@@ -187,8 +236,11 @@ class GameScene extends Phaser.Scene {
             }
             // 오른쪽 벽 막기
             if (mob.x > config.width) {
-                mob.x = config.width;
-                mob.body.setVelocityX(0);
+                if(this.isWaveInProgress){
+                    mob.x = config.width;
+                    mob.body.setVelocityX(0);
+                }
+                
             }
             // 바닥 막기 
             if (mob.y > config.height - this.groundHeight) {
@@ -200,7 +252,7 @@ class GameScene extends Phaser.Scene {
             // 드래그 중인 몹은 로직에서 제외
             if (mob.isDragging || mob.isThrown) return;
             
-            if (mob.x < 100) {
+            if (mob.x < 100 && this.isWaveInProgress) {
                 // --- [성벽 도달 상태] ---
                 mob.body.setVelocityX(0); // 이동 정지
                 if (!mob.isAttacking) {
@@ -229,7 +281,22 @@ class GameScene extends Phaser.Scene {
                 // --- [이동 상태] ---
                 // 던져진 상태가 아니고 성벽 밖이라면 왼쪽으로 이동
                 mob.isAttacking = false;
-                mob.body.setVelocityX(-mob.speed);
+                if(this.isWaveInProgress){
+                    mob.body.setVelocityX(-mob.speed);
+                }else{
+                    //탈주 시작
+                    mob.setFlipX(true); // 스프라이트 뒤집기 (오른쪽으로 이동하는 것처럼 보이게)
+                    mob.body.setVelocityX(+mob.speed*2); // 탈주할 때는 속도가 더 빨라짐
+                }
+                
+            }
+            // 탈주
+            if(this.isWaveInProgress==false){
+                if (mob.x > config.width || mob.y > config.height) {
+                    //탈주 성공
+                    console.log("적이 탈주했습니다!");  
+                    mob.destroy();
+                }
             }
         });
     }
