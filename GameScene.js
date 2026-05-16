@@ -18,9 +18,8 @@ class GameScene extends Phaser.Scene {
     score = 0;
     gold =0;
     //성의 체력 관련 변수
-    castleHP = 100;
-    maxCastleHP = 100;
-    wave = 1;
+    stat;
+    wave ;
     isWaveInProgress = true;
     enit(){
         // 게임이 완전히 종료될 때 실행되는 함수입니다.
@@ -32,38 +31,37 @@ class GameScene extends Phaser.Scene {
         this.instanceId = Math.floor(Math.random() * 1000);
 
        this.isGameOver=false;
-       this.isPaused=false;
+       this.isPaused=true;
+       this.isWaveInProgress=true;       
+       this.wave={value:0, timer:10000 }
        this.score=0;
-       this.wave=1;
-       this.isWaveInProgress=true;
-       this.gold = 100000;
-       this.castleHP=100;
-       this.maxCastleHP=100;
+       this.gold = 1000;
+       this.stat ={hp:100, maxHp:100, armor:0 };
         // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
         this.upgrades = {
 
-            '지휘소': [
-                { tag:'wallType', name: '성채 건축술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 100},
-                { tag:'maxCastleHp', name: '성채 방어력',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 150 },
-                { tag:'wallFix', name: '성채 수리', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 150}
+            'stronghold': [
+                { tag:'wallType', name: '축성술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 10, info:'성벽의 재료를 변경하여 더 높은 방어력을 얻습니다.'},
+                { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 15, info:'성벽의 최대 내구도를 증가시킵니다'},
+                { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
+                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
             ],
-            '성당': [
-                { tag:'summon', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 150 },
-                { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 120 }
+            'cathedral': [
+                { tag:'summon', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 150 , info:''},
+                { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 120 , info:''}
             ],
-            '궁수양성소': [
-                { tag:'range', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120}
+            'barracks': [
+                { tag:'range', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
             ],
-            '마술사의 샘': [
-                { tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 }
+            'magichall': [
+                { tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ]
         };
 
         this.registry.set('playerUpgrades', this.upgrades);
         this.registry.set('score', this.score);
         this.registry.set('gold', this.gold);
-        this.registry.set('castleHP', this.castleHP);
-        this.registry.set('maxCastleHP', this.maxCastleHP);
+        this.registry.set('stat', this.stat);
         this.registry.set('wave', this.wave);
         
         
@@ -75,8 +73,7 @@ class GameScene extends Phaser.Scene {
         
 
         //배경그림
-        const bg = this.add.image(config.width/2, config.height/2, 'background1').setDisplaySize(config.width, config.height);
-        bg.setDepth(0); // 배경은 가장 뒤에 위치하도록 설정
+        this.setBgImage('background1');
 
         // 1. 바닥(Ground)을 정적 그룹으로 생성
         const platforms = this.physics.add.staticGroup(); 
@@ -91,7 +88,7 @@ class GameScene extends Phaser.Scene {
             
             if (dropDistance > 400 && mob.y > mob.staryY ) { //400 픽셀 이상 높이에서 떨어졌다면
 
-                this.updateScore(10);
+                this.updateScore(mob.score);
 
                 //mob.destroy();
                 this.fadeOutAndDestroy(this, mob);
@@ -102,8 +99,11 @@ class GameScene extends Phaser.Scene {
                 mob.body.setVelocityX(-mob.speed);
             }
         });
+        //성채 이미지
+        this.drawCastleImage();
+        
         //웨이브 시작
-        this.waveStart();
+        //this.waveStart();
 
         // 입력 이벤트 설정
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
@@ -140,10 +140,10 @@ class GameScene extends Phaser.Scene {
 
         this.events.off('startNextWave')
 ;        this.events.on('startNextWave', () => {
-            this.wave++;
-            this.timer = 10000;
+            this.wave.value++;
+            this.wave.timer += 2000; //2초 증가
             this.registry.set('wave', this.wave);
-            this.waveStart(this.timer);
+            this.waveStart(this.wave.timer);
         });
         this.events.off('attempt-upgrade');
         this.events.on('attempt-upgrade', (category,tag) => {
@@ -153,37 +153,57 @@ class GameScene extends Phaser.Scene {
 
         
     }
-    waveStart(delayTimer = 10000) {
-        console.log(`웨이브 ${this.wave} 시작!`);
+    drawCastleImage(){
+        this.castle = this.add.image(100, config.height-150, 'castle1').setDisplaySize(144,144);
+        this.castle.setDepth(2);
+    }
+    setBgImage(name, isDark =false){
+        
+        this.bg = this.add.image(config.width/2, config.height/2, `${name}${isDark?'_dark':''}`).setDisplaySize(config.width, config.height);
+        this.bg.setDepth(0);
+    }
+    waveStart(delayTimer ) {
+        this.setBgImage('background1');
+        console.log(`웨이브 ${this.wave.value} 시작!`);
         this.isPaused=false;
         this.isWaveInProgress = true;
-        this.spawnTimers = {};
-        // 2초마다 몹 생성
-        this.spawnTimers['normal'] = this.time.addEvent({
-            delay: 2000,
-            callback: this.spawnMob,
-            callbackScope: this,
-            loop: true
-        });
+        this.spawnTimers = [];
+
+
+        if(this.wave.value>0){
+            this.addSpawnTimer(1,1800);
+        }
+        if(this.wave.value>=2){
+            this.addSpawnTimer(2,2000);
+        }
+        if(this.wave.value>=4){
+            this.addSpawnTimer(1,1600);
+        }
+        if(this.wave.value>=5){
+            this.addSpawnTimer(1,1800);
+        }
+        
+
         this.spawnWaveTimer = this.time.addEvent({
             delay: delayTimer , // 일정 시간 후 웨이브 종료
             callback: ()=>{ 
                 this.isWaveInProgress =false; 
-                Object.values(this.spawnTimers).forEach(timer => {
-                    if (timer) timer.remove(); // 또는 timer.destroy();
+                this.spawnTimers.forEach((element) => {
+                    element.remove();
                 });
-                this.spawnTimers = {};
+                this.spawnTimers = [];
                 console.log("웨이브 종료, 적들이 탈주합니다")
                         },
             callbackScope: this,
             loop:false
+            
         });
     }
-    spawnMob() {
+    spawnMob(mobNumber=1) {
         //몹 생성
         //const mob = this.mobs.create(  config.width , config.height -this.groundHeight*2, 'mob1');
-        const mob = this.mobs.create( config.width , config.height - this.groundHeight*2, 'mobsprite1');
-        mob.anims.play('mob1_walk');
+        const mob = this.mobs.create( config.width , config.height - this.groundHeight*2, `mobsprite${mobNumber}`);
+        mob.anims.play(`mob${mobNumber}_walk`);
 
         mob.setInteractive({ draggable: true });
         
@@ -200,14 +220,41 @@ class GameScene extends Phaser.Scene {
         //const offsetX = Phaser.Math.Between(-20, 20);
         const offsetY = Phaser.Math.Between(-15, 15);
         mob.body.setOffset(0, offsetY);
-
-        mob.speed = 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
-        mob.canThrown = true; // 던질 수 있는 상태인지 여부 (추가)
         mob.isThrown = false;
         mob.isDragging  = false;
         mob.highestY = mob.y;
+        //개인변수
+        mob.speed = 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+        mob.canThrown = true; // 던질 수 있는 상태인지 여부 (추가)
+        mob.damage = 1;
+        switch (mobNumber){
+            case 1:
+                //기본 몹
+                mob.speed = 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.canThrown =true;
+                mob.damage = 1;
+                mob.score = 1;
+            break;
+            case 2:
+                //wallbreaker
+                mob.speed = 80 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.canThrown =true;
+                mob.damage = 5;
+                mob.score = 2;
+            break;
+        }
     }
-
+    addSpawnTimer(mobNumber=1, delayTimer =2000){
+        const spawnTimer = this.time.addEvent({
+        delay: delayTimer,
+            callback:() => {
+                this.spawnMob(mobNumber);
+            },  
+            callbackScope: this,
+            loop: true
+        });
+        this.spawnTimers.push( spawnTimer);
+    }
 
     update(time, delta) { // time은 게임 시작 후 경과된 전체 시간(ms)
         //console.log(time);
@@ -216,6 +263,7 @@ class GameScene extends Phaser.Scene {
         if(this.mobs.getChildren().length <= 0 && !this.isWaveInProgress){
             this.isPaused=true;
             this.events.emit('waveCleared'); // UIScene에 웨이브 클리어 신호 보냄
+            this.setBgImage('background1',true);
             console.log("웨이브 클리어! 잠시 휴식...");
             //다음 웨이브 시작
             //this.wave++;
@@ -239,6 +287,12 @@ class GameScene extends Phaser.Scene {
                 if(this.isWaveInProgress){
                     mob.x = config.width;
                     mob.body.setVelocityX(0);
+                }else{
+                     if (mob.x > config.width+10) {
+                        mob.x = config.width+10
+                        mob.body.setVelocityX(0);
+                     }
+                    
                 }
                 
             }
@@ -252,7 +306,7 @@ class GameScene extends Phaser.Scene {
             // 드래그 중인 몹은 로직에서 제외
             if (mob.isDragging || mob.isThrown) return;
             
-            if (mob.x < 100 && this.isWaveInProgress) {
+            if (mob.x < 200 && this.isWaveInProgress) {
                 // --- [성벽 도달 상태] ---
                 mob.body.setVelocityX(0); // 이동 정지
                 if (!mob.isAttacking) {
@@ -263,17 +317,17 @@ class GameScene extends Phaser.Scene {
                 // 공격 쿨타임 체크 (1초마다)
                 if (!mob.lastAttackTime || time > mob.lastAttackTime + 1000) {
                     mob.lastAttackTime = time;
-                    this.takeDamage(4);
+                    this.takeDamage( mob.damage );
 
                     // 뒤로 물러나는 애니메이션
                     this.tweens.add({
                         targets: mob,
-                        x: 60,          // 100에서 120으로 살짝 밀려남
+                        x: 160,          // 100에서 120으로 살짝 밀려남
                         duration: 150,
                         yoyo: true,      // 다시 100으로 돌아옴
                         ease: 'Back.easeOut',
                         onComplete: () => {
-                            if (mob.active) mob.x = 80+Math.random()*20 ; // 위치 재고정
+                            if (mob.active) mob.x = 200 - Math.random()*20 ; // 위치 재고정
                         }
                     });
                 }
@@ -329,13 +383,12 @@ class GameScene extends Phaser.Scene {
 
         // 3. 비용 차감 및 레벨업
         this.gold -= item.cost;
-        this.registry.set('gold', this.gold); // 변경된 골드 레지스트리에 저장
         if(item.unlock){
             
         }else{
             item.unlock = true; // 해금 처리
             item.level =item.maxLevel;
-            console.log(`${item.name}이(가) 해금되었습니다!`);
+            console.log(`${item.name} -> 해금되었습니다!`);
         }
         if(item.level>-1){
             
@@ -349,39 +402,90 @@ class GameScene extends Phaser.Scene {
 
         // 4. 태그에 따른 실제 효과 적용 (이 부분이 switch 문 역할)
         
-            
-        switch (item.tag) {
+        //console.log(item.tag.split('_')[0]);
+        switch (item.tag.split('_')[0]) {
+            case 'wallType':
+                this.stat.armor = item.level;
+                this.getUpgradeItem('stronghold','wallFix').cost = this.stat.armor;
+                this.getUpgradeItem('stronghold','wallFix_10').cost = this.stat.armor*10;
+                
+                //console.log(this.castleArmor);
+                break;
             case 'maxCastleHp':
-                this.maxCastleHP += 20; // 최대 체력 증가       
-                this.registry.set('maxCastleHP', this.maxCastleHP); // 변경된 최대 체력 레지스트리에 저장
+                this.stat.hp += 20;
+                this.stat.maxHp += 20;
                 break;
             case 'wallFix':
-                //Level 0
-                this.castleHP += 20; // 현재 체력 증가
-                if (this.castleHP > this.maxCastleHP) this.castleHP = this.maxCastleHP; // 최대 체력 초과 방지
-                this.registry.set('castleHP', this.castleHP); // 변경된 현재 체력 레지스트리에 저장
+                //console.log(item.value);
+                if(this.stat.hp>= this.stat.maxHp){
+                    //환불
+                    this.gold += item.cost;
+                    break
+                }else{
+                    this.stat.hp += item.value ; // 현재 체력 증가
+                    if (this.stat.hp > this.stat.maxHp) this.stat.hp = this.stat.maxHp; // 최대 체력 초과 방지
+                }
                 break;
             // 다른 태그에 대한 효과도 여기에 추가 가능
         }   
 
         // 5. 변경된 데이터 전체를 다시 registry에 저장 (UIScene 갱신용)
+        
+        this.registry.set('gold', this.gold); // 변경된 골드 레지스트리에 저장
+        this.registry.set('stat',this.stat);
         this.registry.set('playerUpgrades', this.upgrades);
+    }
+    getUpgradeItem(category, tag) {
+        return this.upgrades[category].find(item => item.tag === tag);
     }
     ///점수추가
     updateScore(points) {
         this.score += points; // 점수 추가
         this.registry.set('score', this.score); // 공용 보관함에 업데이트된 점수 저장
+        this.gold += points; //골드추가
+        this.registry.set('gold', this.gold);
     }
 
     // 대미지 함수 수정
     takeDamage = (amount) => {
         if (this.isGameOver) return; // 게임 오버 상태에서는 대미지 무시
-        this.castleHP -= amount;
-        if (this.castleHP < 0) this.castleHP = 0;
+
+        const damage = Phaser.Math.Clamp( amount - this.stat.armor, 1,100);//최소대미지 고정
         
-        this.registry.set('castleHP', this.castleHP); // 공용 보관함에 업데이트된 체력 저장
-        if (this.castleHP <= 0) {
+        this.stat.hp -= damage;
+        if (this.stat.hp < 0) this.stat.hp = 0;
+        
+        this.registry.set('stat', this.stat); // 공용 보관함에 업데이트된 체력 저장
+        if (this.stat.hp <= 0) {
             this.gameOver(); 
+        }
+
+        if (this.castle) {
+            // 1. 깜빡임 (Tint)
+            this.castle.setTint(0xff0000);
+            this.time.delayedCall(100, () => this.castle.clearTint());
+
+            // 2. 흔들림 (Tween) - 이 부분이 수정되었습니다.
+            // remove() 호출 전, 변수가 존재하고 'active' 상태인지 확인합니다.
+            if (this.castleShakeTween && this.castleShakeTween.isActive()) {
+                this.castleShakeTween.remove();
+            }
+
+            const originalX = this.castle.x;
+            
+            // 새로운 트윈을 할당합니다.
+            this.castleShakeTween = this.tweens.add({
+                targets: this.castle,
+                x: originalX + 5,
+                duration: 50,
+                yoyo: true,
+                repeat: 3,
+                onComplete: () => {
+                    this.castle.x = originalX;
+                    // 트윈이 끝난 후 null 처리를 해주면 더 안전합니다.
+                    this.castleShakeTween = null;
+                }
+            });
         }
     }
     fadeOutAndDestroy = (scene, target) => {
@@ -395,6 +499,7 @@ class GameScene extends Phaser.Scene {
             duration: 500,     // 0.5초 동안
             ease: 'Power2',
             onComplete: () => {
+                
                 target.destroy(); // 애니메이션이 끝나면 완전히 제거
             }
         });

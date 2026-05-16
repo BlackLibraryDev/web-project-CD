@@ -16,10 +16,14 @@ class PreloadScene extends Phaser.Scene {
 
         // 2. 모든 리소스 로드
         this.load.image('background1', 'assets/bg1.png');
-        this.load.image('mob1', 'assets/mob1.png');
+        this.load.image('background1_dark', 'assets/bg1_dark.png');
+
+        this.load.image('castle1', 'assets/castle1.png');
+
+    
 
         this.load.spritesheet('mobsprite1', 'assets/mobsprite1.png', { frameWidth: 128, frameHeight: 128});
-        
+        this.load.spritesheet('mobsprite2', 'assets/mobsprite2.png', { frameWidth: 128, frameHeight: 128});
         //this.load.image('wall', 'assets/wall.png');
         // 사운드나 폰트도 여기서 로드
         
@@ -33,6 +37,12 @@ class PreloadScene extends Phaser.Scene {
         this.anims.create({
             key: 'mob1_walk',
             frames: this.anims.generateFrameNumbers('mobsprite1', { start: 0, end: 1 }),
+            frameRate: 3, 
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'mob2_walk',
+            frames: this.anims.generateFrameNumbers('mobsprite2', { start: 0, end: 1 }),
             frameRate: 4, 
             repeat: -1
         });
