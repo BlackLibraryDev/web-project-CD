@@ -28,7 +28,7 @@ class UIScene extends Phaser.Scene {
         // 2. 게임오버 화면 그룹
         this.gameOverMenu = this.add.container(0, 0).setVisible(false);
         const overBg = this.add.rectangle(width/2, height/2, width, height, 0xff0000, 0.3);
-        this.scoreText = this.add.text(width/2, height/2, 'SCORE: 0', { fontSize: '48px' , fill: '#000000'}).setOrigin(0.5);
+        this.endscoreText = this.add.text(width/2, height/2, 'SCORE: 0', { fontSize: '48px' , fill: '#000000'}).setOrigin(0.5);
         
         // 1. 다시 시작 버튼 생성
         const restartBtn = this.add.text(config.width / 2, config.height / 2 + 100, 'Restart', {
@@ -44,7 +44,7 @@ class UIScene extends Phaser.Scene {
         restartBtn.on('pointerdown', () => {
             this.restartGame();
         })
-        this.gameOverMenu.add([overBg, this.scoreText, restartBtn]);
+        this.gameOverMenu.add([overBg, this.endscoreText, restartBtn]);
         this.gameOverMenu.setDepth(20); // 다른 UI 요소들보다 위에 표시
 
         // 1. 업그레이드 창 컨테이너 생성 함수 호출
@@ -129,7 +129,7 @@ class UIScene extends Phaser.Scene {
 
         gameScene.events.on('showGameOver', (data) => {
             this.isPaused=true;
-            this.scoreText.setText(`SCORE: ${data.score.toLocaleString()}`);
+            this.endscoreText.setText(`SCORE: ${data.score.toLocaleString()}`);
             this.scene.pause('GameScene'); 
             this.gameOverMenu.setVisible(true);
         });
@@ -182,10 +182,10 @@ class UIScene extends Phaser.Scene {
         const versionTxt = this.add.text(
             this.cameras.main.width - 10, 
             this.cameras.main.height - 10, 
-            `Ver. ${currentVersion}`, 
+            `Build ${currentVersion}`, 
             {
                 fontFamily: 'Arial',
-                fontSize: '12px',
+                fontSize: '14px',
                 fill: '#ffffff',
                 align: 'right'
             }
@@ -315,11 +315,11 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(name); // 첫 번째 카테고리 자동 선택
             }
 
-            const xPos = -200 + (index * 130); // 130px 간격으로 배치
+            const xPos = -200 + (index * 150); // 150px 간격으로 배치
             const yPos = -190;
 
             // 1. 배경 사각형 (모두 동일한 120x40 사이즈)
-            const bg = this.add.rectangle(xPos, yPos, 120, 40, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
+            const bg = this.add.rectangle(xPos, yPos, 140, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
                 this.buttons.push(bg); // 버튼을 배열에 저장
             // 2. 버튼 텍스트 (사각형 중앙에 배치)
@@ -371,7 +371,11 @@ class UIScene extends Phaser.Scene {
             const yPos = index * 80;
 
             // 항목 이름 및 레벨 텍스트
-            const itemText = this.add.text(-400, yPos, `${item.name}${item.unlock ? (item.level <= item.maxLevel && item.level>-1? `(Lv.${item.level}/${item.maxLevel})` : ``): '(해금필요)'}`, {
+            let itemDisplayName = item.unlock ? (item.level <= item.maxLevel && item.level>-1? `${item.name}(Lv.${item.level}/${item.maxLevel})` : item.name) : `${item.name}(해금필요)`;
+            if(item.manPower){
+                itemDisplayName = `${item.name}(현재 ${this.stat[item.tag]}명)`;
+            }
+            const itemText = this.add.text(-400, yPos, itemDisplayName, {
                 fontSize: '32px',
                 padding: { x: 3, y: 3 }
             });
@@ -384,7 +388,11 @@ class UIScene extends Phaser.Scene {
             let btnName = '';
             let btnColor='#ff0';
             
-            if(item.maxLevel>1){
+            if( item.manPower){
+                //고용인 경우
+                 btnName = '고용';
+                btnColor='rgba(0, 157, 255, 1)';
+            }else if(item.maxLevel>1){
                 if(item.level < item.maxLevel ){
                     btnName = '강화';
                     btnColor='#ff0';
