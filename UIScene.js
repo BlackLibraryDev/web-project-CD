@@ -52,7 +52,7 @@ class UIScene extends Phaser.Scene {
 
         // 2. 특정 버튼을 누르거나 키보드를 눌렀을 때 창을 띄우는 이벤트
         this.input.keyboard.on('keydown-U', () => {
-            //return;
+            return;
             const isVisible = this.upgradeWindow.visible;
             this.upgradeWindow.setVisible(!isVisible); // U키를 누를 때마다 토글
         });
@@ -70,11 +70,15 @@ class UIScene extends Phaser.Scene {
 
         
         //점수 및 체력 초기화
-        this.hpText = this.add.text(90, 20, 'Castle HP', {
-            fontSize: '32px',
-            fill: '#ff0000',
-            fontStyle: 'bold'
-        });
+        this.hpText = this.add.text(90, 20, 'Castle HP',  { 
+            fontFamily: 'Arial', 
+            fontSize: '24px', 
+            fill: '#fa2727ff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
+             }
+        );
         // 체력 바를 그릴 그래픽 객체 생성
         this.healthBar = this.add.graphics();
         this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
@@ -113,6 +117,16 @@ class UIScene extends Phaser.Scene {
         });
         this.pauseBtn.setDepth(10); 
         
+        //스텟 표시용
+        this.statText = this.add.text(20, 80, '', {
+            fontSize: '20px',
+            fill: '#000',
+            padding: { x: 3, y: 3 }
+        });
+        this.statText.setDepth(12);
+
+
+
         // 3. 이벤트 리스너 (GameScene에서 보낸 신호를 받음)
         const gameScene = this.scene.get('GameScene');
         
@@ -147,11 +161,13 @@ class UIScene extends Phaser.Scene {
         this.registry.events.off('changedata-score'); // 기존 리스너 제거 (중복 방지)
         this.registry.events.on('changedata-score', (parent, newValue) => {
             this.updateScore(newValue);
+            this.drawStatText();
         });
         this.registry.events.off('changedata-stat');
         this.registry.events.on('changedata-stat', (parent, newValue) => {
             this.stat = newValue;
             this.drawHealthBar(this.healthBar);
+            this.drawStatText();
         });
         
          // 'gold'라는 키의 데이터가 변할 때마다 showCategory를 다시 실행
@@ -160,6 +176,7 @@ class UIScene extends Phaser.Scene {
             // 골드가 변경될 때마다 비용 텍스트 업데이트
             this.gold = newValue;
              this.fcostTxt(newValue);
+             this.drawStatText();
         }, this);
          this.registry.events.off('changedata-playerUpgrades'); // 기존 리스너 제거 (중복 방지)
         this.registry.events.on('changedata-playerUpgrades', () => {
@@ -182,7 +199,7 @@ class UIScene extends Phaser.Scene {
         const versionTxt = this.add.text(
             this.cameras.main.width - 10, 
             this.cameras.main.height - 10, 
-            `Build ${currentVersion}`, 
+            `project CD / BlackLibrary, 2026 - Build ${currentVersion}`, 
             {
                 fontFamily: 'Arial',
                 fontSize: '14px',
@@ -222,6 +239,7 @@ class UIScene extends Phaser.Scene {
         }
     }
     nextGameStart(){
+        this.drawStatText();
         this.upgradeWindow.setVisible(false);
         this.scene.get('GameScene').events.emit('startNextWave'); // GameScene에 다음 웨이브 시작 신호 보냄
         this.isPaused=false;
@@ -259,7 +277,57 @@ class UIScene extends Phaser.Scene {
         this.hpText.setText(`Castle HP: ${this.stat.hp}/${this.stat.maxHp}`);
         this.hpText.setDepth(12);
     }
+    drawStatText() {
+    // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
+    const X = -30; // 텍스트 시작 X 좌표
+    const Y = 80; // 텍스트 시작 Y 좌표
+    const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
 
+    // 💡 멋진 텍스트 스타일 세팅 (그림자 및 폰트 두께 조절)
+    const textStyle = { 
+        fontFamily: 'Arial', 
+        fontSize: '28px', 
+        fill: '#ffffff',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
+    };
+
+    // 만약 기존에 텍스트 객체들이 생성되지 않았다면 최초 1회 생성합니다.
+    if (!this.statTexts) {
+        this.statTexts = {};
+        // 💰 골드 아이콘과 텍스트 배치
+        //this.add.image(X+20, Y + 30, 'icon_gold').setOrigin(0, 0.5).setScale(0.8);
+        this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
+
+        // 🛡️ 방어력 아이콘과 텍스트 배치
+        //this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
+        this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
+
+        // 👥 인원 아이콘과 텍스트 배치 (Y축 간격을 35px씩 띄웁니다)
+        //this.add.image(X+20, Y + 100, 'icon_manpower').setOrigin(0, 0.5).setScale(0.8);
+        this.statTexts.manPower = this.add.text(X+50, Y + 100, '', textStyle).setOrigin(0, 0.5);
+
+        //🏹
+        this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
+
+        this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
+
+    }
+
+    // 💡 실제 값만 업데이트 (컬러링 추가로 시각 효과 극대화)
+    
+    this.statTexts.gold.setText(`💰 ${goldAmount}`).setColor('#f1c40f'); // 황금색
+    this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
+    this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#3498db'); // 파란색 계열
+    this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
+    this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#9b59b6'); // 보라색 계열
+    this.statTexts.armor.setDepth(22);
+    this.statTexts.manPower.setDepth(22);
+    this.statTexts.gold.setDepth(22);
+    this.statTexts.archer.setDepth(22);
+    this.statTexts.witch.setDepth(22);
+}
     createUpgradeWindow() {
         const { width, height } = this.cameras.main;
 
@@ -302,7 +370,7 @@ class UIScene extends Phaser.Scene {
         const allUpgrades = this.registry.get('playerUpgrades');
         const categories = Object.keys(allUpgrades);
         const categoryNames = {
-            'stronghold':'🏰지휘소',
+            'stronghold':'🏰건축소',
             'cathedral' :'⛪대성당',
             'barracks' : '🏹훈련소',
             'magichall' : '🪄마술사의 샘'
@@ -371,7 +439,14 @@ class UIScene extends Phaser.Scene {
             const yPos = index * 80;
 
             // 항목 이름 및 레벨 텍스트
-            let itemDisplayName = item.unlock ? (item.level <= item.maxLevel && item.level>-1? `${item.name}(Lv.${item.level}/${item.maxLevel})` : item.name) : `${item.name}(해금필요)`;
+            let itemDisplayName = item.level < 0 ?  item.name :`${item.name}(Lv.${item.level}/${item.maxLevel})`
+            if(item.unlock!=null){
+                if(item.unlock){
+                    itemDisplayName = item.name;
+                }else{
+                    itemDisplayName = `${item.name}(해금필요)`;
+                }
+            }
             if(item.manPower){
                 itemDisplayName = `${item.name}(현재 ${this.stat[item.tag]}명)`;
             }

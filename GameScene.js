@@ -34,10 +34,10 @@ class GameScene extends Phaser.Scene {
        this.isGameOver=false;
        this.isPaused=true;
        this.isWaveInProgress=true;       
-       this.wave={value:0, timer:10000 }
+       this.wave={value:0, timer:20000 }
        this.score=0;
-       this.gold = 1000;
-       this.stat ={hp:100, maxHp:100, armor:0 , manPower:0, archer:1, archerCool:1800,   witch:0 };
+       this.gold = 0;
+       this.stat ={hp:100, maxHp:100, armor:0 , manPower:0, convertionTime:8000,  archer:0, archerCool:1800,   witch:0 };
        this.spawnTimers=[];
         // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
         this.upgrades = {
@@ -49,17 +49,16 @@ class GameScene extends Phaser.Scene {
                 { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
             ],
             'cathedral': [
-                //{ tag:'summon', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 150 , info:''},
-                //{ tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 120 , info:''}
+                { tag:'conversion', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
+                { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 10 , info:'신앙심을 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
             'barracks': [
-                { tag:'archer', name: '궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
-                { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 15, info:'궁병이 더 빨리 화살을 쏩니다'}
+                { tag:'archer', name: '궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
+                { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 20, info:'궁병이 더 빨리 화살을 쏩니다'}
                 //{ tag:'archerRange', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
             ],
             'magichall': [
-                { tag:'witch', name: '마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'}
-                ,
+                //{ tag:'witch', name: '마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'},
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ]
         };
@@ -101,21 +100,34 @@ class GameScene extends Phaser.Scene {
                 mob.highestY = mob.y; // 높이 초기화
                 mob.body.setVelocityX(-mob.speed);
             }
+            if( this.cathedralTimer==null && mob.x < this.castleX + 50){   
+                //성당 개종 발동 조건: 개종이 해금되어 있고, 개종이 진행 중이지 않고, 몹이 성채 근처에 있을 때
+                this.startCathedralConvertion(mob);
+            }
         });
         //성채 이미지
         this.drawCastleImage();
 
         //궁수
-        this.archer = this.add.sprite(100, config.height-200, 'archer').setDisplaySize(128,128);
+        this.archer = this.add.sprite(this.castleX, config.height-200, 'archer').setDisplaySize(128,128);
         this.archer.setDepth(2);
         this.archer.setVisible(false);
-         this.archerText = this.add.text(100, config.height-240, `궁수 x${this.stat.archer}`, 
+        this.archerText = this.add.text(this.castleX, config.height-240, `궁수 x${this.stat.archer}`, 
                 {   fontSize: '24px', 
                     fill: '#000000ff',
                     padding: { x: 3, y: 3 }
                 }).setOrigin(0.5); 
         this.archerText.setVisible(false);
         this.archerText.setDepth(4);
+
+        //성당 고문실
+
+        this.cathedral = this.add.sprite(this.castleX-50, config.height-140, 'cathedral').setDisplaySize(128,128); 
+        
+        this.cathedral.setDepth(5);
+        this.cathedral.setVisible(false);
+        
+        
         //웨이브 시작
         //this.waveStart();
 
@@ -176,6 +188,45 @@ class GameScene extends Phaser.Scene {
         this.bg = this.add.image(config.width/2, config.height/2, `${name}${isDark?'_dark':''}`).setDisplaySize(config.width, config.height);
         this.bg.setDepth(0);
     }
+    setCathedral(){
+        if(this.getUpgradeItem('cathedral','conversion').unlock){
+            this.cathedral.setVisible(true);
+        }
+        this.cathedralTimer = null;
+
+        //this.cathedral.anims.play('cathedral_fire', true);
+    }
+    startCathedralConvertion(target){
+        if(!this.getUpgradeItem('cathedral','conversion').unlock) return; // 개종이 해금되지 않았다면 실행하지 않음
+        if(this.cathedralTimer) return; // 이미 진행 중이라면 중복 실행 방지
+        this.updateScore(target.score);
+        target.destroy();
+
+        this.cathedral.anims.play('cathedral_fire', true);
+        this.cathedralTimer = this.time.addEvent({
+            delay: this.stat.convertionTime, // 2초후에 개종
+            callback: () => {
+                // 여기에 개종 효과 로직을 추가합니다.
+                this.converstionComplete();
+
+            },
+            callbackScope: this,
+            loop: false // 한 번만 실행하도록 설정
+        });
+        return 
+    }
+    converstionComplete(){
+        if(this.cathedralTimer!=null){
+            this.stat.manPower++;
+            this.registry.set('stat', this.stat); // 변경된 스탯을 레지스트리에 저장하여 UIScene 갱신
+            this.cathedral.anims.play('cathedral_idle'); // 개종 애니메이션 재생 (한 번만)
+            this.cathedralTimer?.remove();
+            console.log(`개종 완료! ${this.stat.manPower}명`);
+        }
+        this.cathedralTimer = null;
+        
+    }
+
     waveStart(delayTimer ) {
         this.setBgImage('background1');
         console.log(`웨이브 ${this.wave.value} 시작!`);
@@ -199,6 +250,8 @@ class GameScene extends Phaser.Scene {
         if(this.wave.value>=5){
             this.addSpawnTimer(1,1800);
         }
+        //성당 고문실
+        this.setCathedral();
 
         //궁수 활 매커니즘
         this.archeryTimer=null;
@@ -347,7 +400,10 @@ class GameScene extends Phaser.Scene {
             this.archeryTimer?.remove();
             this.archeryTimer = null; // 지운 후에는 항상 null로 초기화해주는 것이 좋습니       
 
-            
+            //성당 고문실 정리
+            this.converstionComplete();
+
+
             console.log("웨이브 클리어! 잠시 휴식...");
             return;
         }
@@ -389,7 +445,7 @@ class GameScene extends Phaser.Scene {
             if (mob.isDragging || mob.isThrown) return;
             
             if (mob.x < 200 && this.isWaveInProgress) {
-                // --- [성벽 도달 상태] ---
+                // --- [성벽 도착 상태] ---
                 mob.body.setVelocityX(0); // 이동 정지
                 if (!mob.isAttacking) {
                     mob.isAttacking = true;
@@ -460,14 +516,21 @@ class GameScene extends Phaser.Scene {
             console.log("이미 최대 레벨입니다.");
             return;
         }
-
-        // 2. 비용 체크 (예시: this.gold가 있다고 가정)
+        if(item.manPower !=null){
+            if(this.stat.manPower <=0){
+                console.log("인구수가 부족합니다.");
+                return;
+            }
+            this.stat.manPower--; // 인구수 1 감소
+                //this.registry.set('stat', this.stat); // 변경된 스탯을 레지스트리에 저장하여 UIScene 갱신
+        }
+        // 3. 비용 체크 (예시: this.gold가 있다고 가정)
         if (this.gold < item.cost) {
             //console.log("골드가 부족합니다.");
             return;
         }
 
-        // 3. 비용 차감 및 레벨업
+        // 4. 비용 차감 및 레벨업
         this.gold -= item.cost;
         if(item.unlock){
             
@@ -513,12 +576,18 @@ class GameScene extends Phaser.Scene {
                 }
                 break;
 
+            case 'faith':
+                this.stat.convertionTime -= item.value;
+                
+            break;
+
+
             case 'archer':
                 this.stat.archer++;
             break;
 
             case 'archerTraining':
-                this.stat.archerCool = 1800 - item.level * item.value;
+                this.stat.archerCool -= item.value;
                 
             break;
             // 다른 태그에 대한 효과도 여기에 추가 가능
@@ -711,7 +780,7 @@ class GameScene extends Phaser.Scene {
             this.events.on('update', arrow.updateRotation);
 
             // 6. 300ms 후 파괴 및 이벤트 해제
-            this.time.delayedCall(30000, () => {
+            this.time.delayedCall(10000, () => {
                 if (arrow && arrow.active) {
                     this.events.off('update', arrow.updateRotation);
                     arrow.destroy();

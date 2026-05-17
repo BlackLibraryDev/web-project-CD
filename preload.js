@@ -23,6 +23,8 @@ class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('arrow', 'assets/arrow.png', { frameWidth: 48, frameHeight: 12});
         this.load.spritesheet('archer', 'assets/archer.png', { frameWidth: 128, frameHeight: 128 });
 
+        this.load.spritesheet('cathedral', 'assets/cathedral.png', { frameWidth: 128, frameHeight: 128 });
+
         this.load.spritesheet('mobsprite1', 'assets/mobsprite1.png', { frameWidth: 128, frameHeight: 128});
         this.load.spritesheet('mobsprite2', 'assets/mobsprite2.png', { frameWidth: 128, frameHeight: 128});
         //this.load.image('wall', 'assets/wall.png');
@@ -40,6 +42,18 @@ class PreloadScene extends Phaser.Scene {
             frames: this.anims.generateFrameNumbers('archer', { start: 0, end: 3 }),
             frameRate: 20, 
             repeat: 0
+        });
+        this.anims.create({
+            key: 'cathedral_idle',
+            frames: this.anims.generateFrameNumbers('cathedral', { start: 0, end: 0 }),
+            frameRate: 10, 
+            repeat: 0
+        });
+        this.anims.create({
+            key: 'cathedral_fire',
+            frames: this.anims.generateFrameNumbers('cathedral', { start: 1, end: 3 }),
+            frameRate: 10, 
+            repeat: -1
         });
 
         this.anims.create({
