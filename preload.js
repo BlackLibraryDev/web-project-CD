@@ -15,6 +15,8 @@ class PreloadScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 2. 모든 리소스 로드
+        this.load.image('menu_bg', 'assets/bg1.png');
+
         this.load.image('background1', 'assets/bg1.png');
         this.load.image('background1_dark', 'assets/bg1_dark.png');
 
@@ -69,7 +71,8 @@ class PreloadScene extends Phaser.Scene {
             repeat: -1
         });
         // 4. 애니메이션 생성이 끝난 직후 다음 씬으로 이동합니다.
-        this.scene.start('GameScene');
+        this.scene.start('MainMenuScene');
+        //this.scene.start('GameScene');
     }
     
 }

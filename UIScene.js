@@ -76,7 +76,7 @@ class UIScene extends Phaser.Scene {
             fill: '#fa2727ff',
             fontStyle: 'bold',
             stroke: '#000000',
-            strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
+            strokeThickness: 3 // 글자 테두리
              }
         );
         // 체력 바를 그릴 그래픽 객체 생성
@@ -85,19 +85,23 @@ class UIScene extends Phaser.Scene {
         
         this.scoreText = this.add.text(config.width - 20, 20, 'Score: 0', {
             fontSize: '32px',
-            fill: '#000000',
-            fontStyle: 'bold'
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
         }).setOrigin(1, 0); // 기준점을 우측 상단으로 설정하여 글자가 왼쪽으로 늘어나게 함
-        this.scoreText.setDepth(8);
+        this.scoreText.setDepth(18);
         this.updateScore( this.registry.get('score') || 0);
         
 
         this.waveText = this.add.text(config.width / 2, 20, 'Wave 0', {
             fontSize: '48px',
-            fill: '#000000',
-            fontStyle: 'bold'
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
         }).setOrigin(0.5, 0); // 기준점을 중앙 상단으로 설정
-        this.waveText.setDepth(8);
+        this.waveText.setDepth(18);
         
         this.waveBar = this.add.graphics();
         this.waveBar.setDepth(8);
@@ -189,7 +193,21 @@ class UIScene extends Phaser.Scene {
         }, this);
 
         //게임 시작
-        this.nextGameStart();
+        const savedData = localStorage.getItem('projectCD_data');
+        if(savedData){
+            this.scene.get('GameScene').setBgImage('background1',true);
+            this.upgradeWindow.setVisible(true);
+            this.currentCategory = 'stronghold'; // 기본 카테고리 설정
+            this.showCategory(this.currentCategory);
+            this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
+            this.drawStatText();
+            this.wave = this.registry.get('wave');
+            this.drawWaveBar(this.waveBar);
+            
+        }else{
+            //저장된 데이터가 없으면 바로 게임 시작
+            this.nextGameStart();
+        }
 
 
         // html에서 설정한 전역 변수 가져오기 (없을 경우를 대비해 기본값 세팅)
@@ -208,10 +226,10 @@ class UIScene extends Phaser.Scene {
             }
         );
         versionTxt.setDepth(99);
-        
-        // 우측 하단 기준점(Origin) 정렬
         versionTxt.setOrigin(1, 1); 
-        versionTxt.setAlpha(0.5); // 너무 밝으면 방해되니 살짝 투명하게
+        //versionTxt.setAlpha(0.5); // 너무 밝으면 방해되니 살짝 투명하게
+        // 우측 하단 기준점(Origin) 정렬
+        
         this.events.once('shutdown', () => {
             this.registry.events.off('changedata-score'); // 기존 리스너 제거 (중복 방지)
             this.registry.events.off('changedata-stat');
@@ -351,7 +369,7 @@ class UIScene extends Phaser.Scene {
         this.upgradeWindow.add(this.costTxt);    
         this.fcostTxt(this.registry.get('gold') || 0); // 초기 비용 텍스트 설정
 
-        const nextWaveBtn = this.add.text(0, 280, '다음 웨이브', {
+        const nextWaveBtn = this.add.text(100, 280, '다음 웨이브', {
             fontSize: '28px',
             fill: '#ffffff',
             backgroundColor: '#333333',
@@ -363,6 +381,21 @@ class UIScene extends Phaser.Scene {
             this.nextGameStart();
         });
         this.upgradeWindow.add(nextWaveBtn);
+
+        //저장버튼
+        this.saveButton = this.add.text(-110, 280, '저장하기', {
+            fontSize: '28px',
+            fill: '#ffffff',
+            backgroundColor: '#333333',
+            padding: { x: 30, y: 20 }
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true }); // 마우스 커서를 손모양으로 변경
+        this.saveButton.on('pointerdown', () => {
+            this.scene.get('GameScene').saveGame();
+            this.saveButton.setText('저장완료!');
+        });
+        this.upgradeWindow.add(this.saveButton);
 
         // 2. 카테고리 이름들만 배열로 추출
         // 결과: ['지휘소', '성당', '궁수양성소', '마술사의 샘']
@@ -439,14 +472,15 @@ class UIScene extends Phaser.Scene {
             const yPos = index * 80;
 
             // 항목 이름 및 레벨 텍스트
-            let itemDisplayName = item.level < 0 ?  item.name :`${item.name}(Lv.${item.level}/${item.maxLevel})`
-            if(item.unlock!=null){
-                if(item.unlock){
-                    itemDisplayName = item.name;
-                }else{
-                    itemDisplayName = `${item.name}(해금필요)`;
-                }
+            let itemDisplayName = item.name;
+            
+            if(item.unlock){
+                itemDisplayName = item.level < 0 ?  item.name : (item.maxLevel > 1 ? `${item.name}(Lv.${item.level}/${item.maxLevel})` : item.name);
+            }else{
+                itemDisplayName = `${item.name}(해금필요)`;
             }
+            
+            
             if(item.manPower){
                 itemDisplayName = `${item.name}(현재 ${this.stat[item.tag]}명)`;
             }
@@ -541,5 +575,7 @@ class UIScene extends Phaser.Scene {
         const gameScene = this.scene.get('GameScene');
         this.scene.stop('UIScene'); // UI 씬도 완전히 재시작
         gameScene.scene.restart(); 
+
+        //        this.scene.start('MainMenuScene');
     }
 }

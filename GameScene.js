@@ -49,11 +49,11 @@ class GameScene extends Phaser.Scene {
                 { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
             ],
             'cathedral': [
-                { tag:'conversion', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
+                { tag:'conversion', name: '개종(👥++)', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
                 { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 10 , info:'신앙심을 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
             'barracks': [
-                { tag:'archer', name: '궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
+                { tag:'archer', name: '궁병 고용(👥-1)', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
                 { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 20, info:'궁병이 더 빨리 화살을 쏩니다'}
                 //{ tag:'archerRange', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
             ],
@@ -69,6 +69,7 @@ class GameScene extends Phaser.Scene {
         this.registry.set('stat', this.stat);
         this.registry.set('wave', this.wave);
         
+        this.loadGame();
         
         // 여기서 UI를 다시 실행해주면 됩니다.
         if (!this.scene.isActive('UIScene')) {
@@ -114,8 +115,11 @@ class GameScene extends Phaser.Scene {
         this.archer.setVisible(false);
         this.archerText = this.add.text(this.castleX, config.height-240, `궁수 x${this.stat.archer}`, 
                 {   fontSize: '24px', 
-                    fill: '#000000ff',
-                    padding: { x: 3, y: 3 }
+                    fill: '#2ecc71',
+                    padding: { x: 3, y: 3 },
+                    fontStyle: 'bold',
+                    stroke: '#000000',
+                    strokeThickness: 2
                 }).setOrigin(0.5); 
         this.archerText.setVisible(false);
         this.archerText.setDepth(4);
@@ -166,6 +170,7 @@ class GameScene extends Phaser.Scene {
 
         this.events.off('startNextWave');
         this.events.on('startNextWave', () => {
+            
             this.wave.value++;
             this.wave.timer += 2000; //2초 증가
             this.registry.set('wave', this.wave);
@@ -797,4 +802,58 @@ class GameScene extends Phaser.Scene {
         // UIScene을 GameScene 위에 띄움 (데이터 전달 가능)
         this.events.emit('showGameOver', { score: this.score }); // UIScene에 신호 보냄
     }
+
+
+    saveGame() {
+        // 1. 저장할 핵심 데이터들을 하나의 객체로 모읍니다.
+        const gameData = {
+            stat: this.registry.get('stat') ,
+            wave: this.registry.get('wave'), // 웨이브 정보도 저장
+            gold: this.registry.get('gold') || 0,
+            score: this.registry.get('score') || 0,
+            upgrades: this.registry.get('playerUpgrades')
+                
+        };
+
+        // 2. 객체를 문자열(JSON)로 변환하여 브라우저에 저장합니다.
+        // 'projectCD_data'는 우리 게임만의 고유한 저장소 이름입니다.
+        localStorage.setItem('projectCD_data', JSON.stringify(gameData));
+        
+        console.log('💾 게임이 안전하게 저장되었습니다!', gameData);
+    }
+
+    /**
+     * 📂 저장된 게임 데이터를 불러오는 함수
+     */
+    loadGame() {
+        // 1. 브라우저에서 저장된 데이터가 있는지 가져옵니다.
+        const savedData = localStorage.getItem('projectCD_data');
+
+        if (savedData) {
+            // 2. 저장된 데이터가 있다면 문자열을 다시 원래 객체로 파싱합니다.
+            const data = JSON.parse(savedData);
+
+            // 3. 게임 내부 변수들에 데이터를 덮어씌웁니다.
+            this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
+            this.wave = data.wave || this.wave;
+            this.gold = data.gold || this.gold;
+            this.score = data.score || this.score;
+            this.upgrades = data.upgrades || this.upgrades;
+            this.registry.set('stat', this.stat);
+            this.registry.set('wave', this.wave);
+            this.registry.set('gold', this.gold);
+            this.registry.set('score', this.score);
+            this.registry.set('playerUpgrades', this.upgrades);
+            
+            console.log('📂 데이터를 성공적으로 불러왔습니다!', data);
+        } else {
+            // 4. 저장된 데이터가 아예 없다면(처음 시작한 유저) 초기값을 설정합니다.
+            
+            console.log('🆕 기존 저장 데이터가 없어 초기 상태로 시작합니다.');
+        }
+
+        // 5. 불러온 데이터를 화면에 즉시 반영하기 위해 UI 텍스트를 갱신합니다.
+        
+    }
+
 }
