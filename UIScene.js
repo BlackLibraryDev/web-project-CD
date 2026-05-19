@@ -47,8 +47,9 @@ class UIScene extends Phaser.Scene {
         this.gameOverMenu.add([overBg, this.endscoreText, restartBtn]);
         this.gameOverMenu.setDepth(20); // 다른 UI 요소들보다 위에 표시
 
-        // 1. 업그레이드 창 컨테이너 생성 함수 호출
+        // 1. 결과창 및 업그레이드 창 컨테이너 생성 함수 호출
         this.createUpgradeWindow();
+        this.createResultWindow();
 
         // 2. 특정 버튼을 누르거나 키보드를 눌렀을 때 창을 띄우는 이벤트
         this.input.keyboard.on('keydown-U', () => {
@@ -133,9 +134,12 @@ class UIScene extends Phaser.Scene {
 
         // 3. 이벤트 리스너 (GameScene에서 보낸 신호를 받음)
         const gameScene = this.scene.get('GameScene');
+
         
-        gameScene.events.on('waveCleared', () => {
-            this.upgradeWindow.setVisible(true);
+        gameScene.events.on('waveCleared', (data) => {
+            //this.upgradeWindow.setVisible(true);
+            this.resultWindow.setVisible(true);
+            this.showResultWindow(data);
         });
         gameScene.events.on('showPause', () => {
             this.pauseMenu.setVisible(true);
@@ -231,7 +235,9 @@ class UIScene extends Phaser.Scene {
         // 우측 하단 기준점(Origin) 정렬
         
         this.events.once('shutdown', () => {
+            this.registry.events.off('changedata-wave');
             this.registry.events.off('changedata-score'); // 기존 리스너 제거 (중복 방지)
+            this.registry.events.off('changedata-gold');
             this.registry.events.off('changedata-stat');
             this.registry.events.off('changedata-playerUpgrades'); // 기존 리스너 제거 (중복 방지)
             this.registry.events.removeAllListeners(); // 혹시 남아있을 수 있는 다른 리스너들도 모두 제거
@@ -296,56 +302,186 @@ class UIScene extends Phaser.Scene {
         this.hpText.setDepth(12);
     }
     drawStatText() {
-    // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
-    const X = -30; // 텍스트 시작 X 좌표
-    const Y = 80; // 텍스트 시작 Y 좌표
-    const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
+        // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
+        const X = -30; // 텍스트 시작 X 좌표
+        const Y = 80; // 텍스트 시작 Y 좌표
+        const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
 
-    // 💡 멋진 텍스트 스타일 세팅 (그림자 및 폰트 두께 조절)
-    const textStyle = { 
-        fontFamily: 'Arial', 
-        fontSize: '28px', 
-        fill: '#ffffff',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
-    };
+        // 💡 멋진 텍스트 스타일 세팅 (그림자 및 폰트 두께 조절)
+        const textStyle = { 
+            fontFamily: 'Arial', 
+            fontSize: '28px', 
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
+        };
 
-    // 만약 기존에 텍스트 객체들이 생성되지 않았다면 최초 1회 생성합니다.
-    if (!this.statTexts) {
-        this.statTexts = {};
-        // 💰 골드 아이콘과 텍스트 배치
-        //this.add.image(X+20, Y + 30, 'icon_gold').setOrigin(0, 0.5).setScale(0.8);
-        this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
+        // 만약 기존에 텍스트 객체들이 생성되지 않았다면 최초 1회 생성합니다.
+        if (!this.statTexts) {
+            this.statTexts = {};
+            // 💰 골드 아이콘과 텍스트 배치
+            //this.add.image(X+20, Y + 30, 'icon_gold').setOrigin(0, 0.5).setScale(0.8);
+            this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
 
-        // 🛡️ 방어력 아이콘과 텍스트 배치
-        //this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
-        this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
+            // 🛡️ 방어력 아이콘과 텍스트 배치
+            //this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
+            this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
 
-        // 👥 인원 아이콘과 텍스트 배치 (Y축 간격을 35px씩 띄웁니다)
-        //this.add.image(X+20, Y + 100, 'icon_manpower').setOrigin(0, 0.5).setScale(0.8);
-        this.statTexts.manPower = this.add.text(X+50, Y + 100, '', textStyle).setOrigin(0, 0.5);
+            // 👥 인원 아이콘과 텍스트 배치 (Y축 간격을 35px씩 띄웁니다)
+            //this.add.image(X+20, Y + 100, 'icon_manpower').setOrigin(0, 0.5).setScale(0.8);
+            this.statTexts.manPower = this.add.text(X+50, Y + 100, '', textStyle).setOrigin(0, 0.5);
 
-        //🏹
-        this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
+            //🏹
+            this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
 
-        this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
+            this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
 
+        }
+
+        // 💡 실제 값만 업데이트 (컬러링 추가로 시각 효과 극대화)
+        let upkeepCost = 0;
+        if(this.stat.archer > 0){
+            upkeepCost += this.stat.archerCost*this.stat.archer; // 궁수 1명당 유지비 2골드
+        }
+        if(this.stat.witch > 0){
+            upkeepCost += this.stat.witchCost*this.stat.witch; // 마법사 1명당 유지비 3골드
+        }   
+
+        this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
+        this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
+        this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#3498db'); // 파란색 계열
+        this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost})`).setColor('#2ecc71'); // 초록색 계열
+        this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost})`).setColor('#9b59b6'); // 보라색 계열
+        this.statTexts.armor.setDepth(22);
+        this.statTexts.manPower.setDepth(22);
+        this.statTexts.gold.setDepth(22);
+        this.statTexts.archer.setDepth(22);
+        this.statTexts.witch.setDepth(22);
     }
 
-    // 💡 실제 값만 업데이트 (컬러링 추가로 시각 효과 극대화)
-    
-    this.statTexts.gold.setText(`💰 ${goldAmount}`).setColor('#f1c40f'); // 황금색
-    this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
-    this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#3498db'); // 파란색 계열
-    this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
-    this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#9b59b6'); // 보라색 계열
-    this.statTexts.armor.setDepth(22);
-    this.statTexts.manPower.setDepth(22);
-    this.statTexts.gold.setDepth(22);
-    this.statTexts.archer.setDepth(22);
-    this.statTexts.witch.setDepth(22);
-}
+    showResultWindow( data ) {
+        this.nextStageBtn.setVisible(false); // 숫자가 올라가는 동안 버튼은 숨김
+        // 1. 폰트 스타일 설정 (테두리를 주어 가독성 확보)
+        const labelStyle = {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '36px',
+            fill: '#ffffff',
+            stroke: '#111111',
+            strokeThickness: 4
+        };
+    // 💡 [핵심 1] 이전 호출로 만들어진 텍스트들이 남아있다면 완전히 파괴(destroy)합니다.
+        if (this.resultTexts) {
+            this.resultTexts.forEach(textObj => {
+                if (textObj && textObj.active) {
+                    textObj.destroy(); 
+                }
+            });
+        }
+        // 새 텍스트 객체들을 담을 배열 초기화
+        this.resultTexts = [];
+
+        // 💡 [핵심 2] 실행 중이던 이전 타이머나 트윈이 있다면 전부 강제로 멈춥니다.
+        // (결과창이 뜨는 도중에 게임이 재시작되거나 다시 호출되었을 때 꼬이는 걸 방지)
+        this.tweens.killTweensOf(this.resultWindow);
+
+        // 2. 각 항목의 텍스트 객체를 빈 상태('')로 생성하여 resultWindow에 장착
+        // 세로 위치(Y)를 40px 간격으로 나란히 배치합니다.
+        const Ypos =-140;
+        const txtMobs = this.add.text(0, Ypos, '', labelStyle).setOrigin(0.5);
+        const txtGold = this.add.text(0, Ypos + 60, '', labelStyle).setOrigin(0.5);
+        const txtFee1 = this.add.text(0, Ypos + 130, '', labelStyle).setOrigin(0.5);
+        const txtFee2 = this.add.text(0, Ypos + 190, '', labelStyle).setOrigin(0.5);
+        const txtTotal = this.add.text(0, Ypos + 300, '', { ...labelStyle, fontSize: '40px', fill: '#ffcc00' }).setOrigin(0.5);
+        this.resultWindow.add([txtMobs, txtGold, txtFee1, txtFee2,txtTotal]);
+        // 💡 바구니에 저장해두어 다음 호출 때 지울 수 있게 합니다.
+        this.resultTexts.push(txtMobs, txtGold, txtFee1, txtFee2, txtTotal);
+
+        // 3. ⏱️ 시간차(Delay)를 두고 텍스트를 하나씩 채워나가는 연출
+        console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
+        // 0.4초 뒤: 쓰러트린 적 표시
+        this.time.delayedCall(400, () => {
+            txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
+            // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
+        });
+
+        // 0.8초 뒤: 획득한 골드 표시
+        this.time.delayedCall(1000, () => {
+            txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
+        });
+
+        // 1.2초 뒤: 유지비 표시
+        this.time.delayedCall(1400, () => {
+            txtFee1.setText(`💸 유지비 (궁수) : -${(data.archerCost*data.archer).toLocaleString()} (${data.archer}x${data.archerCost}) G`).setColor('#ff4d4d');
+        });
+        this.time.delayedCall(1800, () => {
+            txtFee2.setText(`💸 유지비 (마법사) : -${(data.witchCost*data.witch).toLocaleString()} (${data.witch}x${data.witchCost}) G`).setColor('#ff4d4d');
+        });
+
+
+        // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
+        this.time.delayedCall(2400, () => {
+            // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
+            const scoreCounter = { value: 0 };
+            
+            this.tweens.add({
+                targets: scoreCounter,
+                value: data.earnGold - (data.archerCost*data.archer) - (data.witchCost*data.witch), // 최종 금액
+                duration: 1200, // 1200ms 동안 숫자가 드르륵 올라감
+                ease: 'Power1',
+                onUpdate: () => {
+                    txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
+                    
+                },
+                onComplete: () => {
+                    // 숫자가 다 올라갔을 때 글씨가 살짝 커졌다가 돌아오는 강조 이펙트
+                    this.nextStageBtn.setVisible(true); // 숫자가 올라가는 동안 버튼은 숨김
+                    this.tweens.add({
+                        targets: txtTotal,
+                        scale: 1.2,
+                        duration: 400,
+                        yoyo: true,
+                        ease: 'Quad.easeInOut'
+                    });
+                }
+            });
+        });
+    }
+
+
+    createResultWindow(){
+        //스테이지 완료 후 정산 페이지
+        const { width, height } = this.cameras.main;
+        this.resultWindow = this.add.container(width / 2, height / 2).setVisible(false);
+        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
+        this.resultWindow.add(bg);
+
+         // 점수 텍스트
+         this.resultScoreText = this.add.text(0, -50, '', { fontSize: '32px', fill: '#ffffff' }).setOrigin(0.5);
+         this.resultWindow.add(this.resultScoreText);
+        
+
+         // 다음 스테이지 버튼
+         this.nextStageBtn = this.add.text(0, 280, 'Continue', {
+             fontSize: '28px',
+             fill: '#ffffff',
+             backgroundColor: '#333333',
+             padding: { x: 30, y: 20 }
+         })
+         .setOrigin(0.5)
+         .setInteractive({ useHandCursor: true });
+         this.nextStageBtn.on('pointerdown', () => {
+             this.resultWindow.setVisible(false);
+             this.upgradeWindow.setVisible(true);
+         });
+         this.nextStageBtn.setVisible(false); // 초기에는 숨김
+         this.resultWindow.add(this.nextStageBtn);
+
+
+         this.resultWindow.setDepth(30); // 다른 UI 요소들보다 위에 표시
+         this.resultWindow.setVisible(false);
+    }
+
     createUpgradeWindow() {
         const { width, height } = this.cameras.main;
 
@@ -392,8 +528,13 @@ class UIScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true }); // 마우스 커서를 손모양으로 변경
         this.saveButton.on('pointerdown', () => {
-            this.scene.get('GameScene').saveGame();
-            this.saveButton.setText('저장완료!');
+            if(confirm('게임 진행 상황이 저장됩니다. 계속하시겠습니까?')){
+                this.scene.get('GameScene').saveGame();
+                this.saveButton.setText('저장완료!');
+            }else{
+                return;
+            }
+            
         });
         this.upgradeWindow.add(this.saveButton);
 
@@ -570,12 +711,15 @@ class UIScene extends Phaser.Scene {
     // 4. 다시 시작 로직 함수
     restartGame() {
         // 완전 재시작 
-        this.registry.events.removeAllListeners(); // 리스너 싹 청소
-        this.registry.reset(); // 데이터 싹 청소
-        const gameScene = this.scene.get('GameScene');
-        this.scene.stop('UIScene'); // UI 씬도 완전히 재시작
-        gameScene.scene.restart(); 
-
-        //        this.scene.start('MainMenuScene');
+        /*
+        // 2. 💡 모든 씬을 완전히 종료(stop)하고 메인 화면으로 보내거나 GameScene을 처음부터 다시 켭니다.
+        // 씬을 완전히 내렸다가(stop) 다시 시작하면 내부 이벤트 리스너들도 깨끗하게 청소됩니다.
+        this.scene.stop('UIScene');
+        this.scene.stop('GameScene');
+        this.cameras.main.off(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE);
+        // 3. 메인 메뉴 씬으로 완전히 돌아가서 처음부터 다시 시작하게 만듭니다.
+        this.scene.start('MainMenuScene');
+            */
+        window.location.reload();
     }
 }

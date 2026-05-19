@@ -31,27 +31,32 @@ class GameScene extends Phaser.Scene {
         // 씬이 생성된 고유 ID 생성 (랜덤값)
         this.instanceId = Math.floor(Math.random() * 1000);
 
+        
+
        this.isGameOver=false;
        this.isPaused=true;
        this.isWaveInProgress=true;       
        this.wave={value:0, timer:20000 }
        this.score=0;
        this.gold = 0;
-       this.stat ={hp:100, maxHp:100, armor:0 , manPower:0, convertionTime:8000,  archer:0, archerCool:1800,   witch:0 };
+       this.stat ={hp:100, maxHp:100, armor:0 , 
+            manPower:0, convertionTime:8000,  
+            archer:0, 
+            archerCost:4, 
+            archerCool:1800,   
+            witch:0, 
+            witchCost:10
+        };
+       
        this.spawnTimers=[];
         // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
         this.upgrades = {
-
-            'stronghold': [
-                { tag:'wallType', name: '축성술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 10, info:'성벽의 재료를 변경하여 더 높은 방어력을 얻습니다.'},
-                { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 15, info:'성벽의 최대 내구도를 증가시킵니다'},
-                { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
-                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
-            ],
             'cathedral': [
                 { tag:'conversion', name: '개종(👥++)', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
                 { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 10 , info:'신앙심을 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
+            
+            
             'barracks': [
                 { tag:'archer', name: '궁병 고용(👥-1)', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
                 { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 20, info:'궁병이 더 빨리 화살을 쏩니다'}
@@ -60,6 +65,12 @@ class GameScene extends Phaser.Scene {
             'magichall': [
                 //{ tag:'witch', name: '마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'},
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
+            ],
+            'stronghold': [
+                { tag:'wallType', name: '축성술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 10, info:'성벽의 재료를 변경하여 더 높은 방어력을 얻습니다.'},
+                { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 15, info:'성벽의 최대 내구도를 증가시킵니다'},
+                { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
+                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
             ]
         };
 
@@ -72,10 +83,11 @@ class GameScene extends Phaser.Scene {
         this.loadGame();
         
         // 여기서 UI를 다시 실행해주면 됩니다.
+        
         if (!this.scene.isActive('UIScene')) {
             this.scene.launch('UIScene');
         }
-
+        console.log(this.scene.isActive('UIScene'));
         
 
         //배경그림
@@ -87,7 +99,7 @@ class GameScene extends Phaser.Scene {
         platforms.add(this.ground); // 이제 .add()가 작동합니다.
 
         this.mobs = this.physics.add.group();
-
+        
         // 3. 충돌 시 낙차 계산
         this.physics.add.collider(this.mobs, platforms, (mob, ground) => {
             const dropDistance = mob.y - mob.highestY; // 떨어진 거리 계산
@@ -241,7 +253,13 @@ class GameScene extends Phaser.Scene {
             element.remove();
         });
         this.spawnTimers = [];
-
+        this.data ={
+            mobNumber:0, earnScore:0, earnGold:0 , 
+            archer:this.stat.archer, 
+            archerCost: this.stat.archerCost, 
+            witch:this.stat.witch, 
+            witchCost:this.stat.witchCost
+        };
 
         if(this.wave.value>0){
             this.addSpawnTimer(1,1800);
@@ -398,7 +416,7 @@ class GameScene extends Phaser.Scene {
         
         if(this.mobs.getChildren().length <= 0 && !this.isWaveInProgress){
             this.isPaused=true;
-            this.events.emit('waveCleared'); // UIScene에 웨이브 클리어 신호 보냄
+            this.events.emit('waveCleared', this.data); // UIScene에 웨이브 클리어 신호 보냄
             this.setBgImage('background1',true);
 
             //궁수,마법사 정리
@@ -407,6 +425,10 @@ class GameScene extends Phaser.Scene {
 
             //성당 고문실 정리
             this.converstionComplete();
+
+            //웨이브 클리어 후 처리 (예: 다음 웨이브 준비, 보상 지급 등)
+            this.gold -= (this.stat.archerCost*this.stat.archer) + (this.stat.witchCost*this.stat.witch); // 유지비 차감
+            this.registry.set('gold', this.gold); // 골드 변경 사항 레지스트리에 저장하여 UIScene 갱신
 
 
             console.log("웨이브 클리어! 잠시 휴식...");
@@ -613,6 +635,9 @@ class GameScene extends Phaser.Scene {
         this.registry.set('score', this.score); // 공용 보관함에 업데이트된 점수 저장
         this.gold += points; //골드추가
         this.registry.set('gold', this.gold);
+        this.data.earnGold += points;
+        this.data.earnScore += points;
+        this.data.mobNumber++;
     }
 
     // 대미지 함수 수정
