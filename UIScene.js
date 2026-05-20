@@ -82,7 +82,7 @@ class UIScene extends Phaser.Scene {
         );
         // 체력 바를 그릴 그래픽 객체 생성
         this.healthBar = this.add.graphics();
-        this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
+        this.drawHealthBar(this.healthBar ); // 위치
         
         this.scoreText = this.add.text(config.width - 20, 20, 'Score: 0', {
             fontSize: '32px',
@@ -183,7 +183,7 @@ class UIScene extends Phaser.Scene {
         this.registry.events.on('changedata-gold', (parent, newValue) => {
             // 골드가 변경될 때마다 비용 텍스트 업데이트
             this.gold = newValue;
-             this.fcostTxt(newValue);
+            // this.fcostTxt(newValue);
              this.drawStatText();
         }, this);
          this.registry.events.off('changedata-playerUpgrades'); // 기존 리스너 제거 (중복 방지)
@@ -201,9 +201,9 @@ class UIScene extends Phaser.Scene {
         if(savedData){
             this.scene.get('GameScene').setBgImage('background1',true);
             this.upgradeWindow.setVisible(true);
-            this.currentCategory = 'stronghold'; // 기본 카테고리 설정
+            this.currentCategory = 'cathedral'; // 기본 카테고리 설정
             this.showCategory(this.currentCategory);
-            this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
+            this.drawHealthBar(this.healthBar, 50, 50 ); // 위치
             this.drawStatText();
             this.wave = this.registry.get('wave');
             this.drawWaveBar(this.waveBar);
@@ -263,8 +263,10 @@ class UIScene extends Phaser.Scene {
         }
     }
     nextGameStart(){
-        this.drawStatText();
         this.upgradeWindow.setVisible(false);
+        this.drawStatText();
+        this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
+        
         this.scene.get('GameScene').events.emit('startNextWave'); // GameScene에 다음 웨이브 시작 신호 보냄
         this.isPaused=false;
     }
@@ -287,7 +289,9 @@ class UIScene extends Phaser.Scene {
     }
     drawHealthBar(graphics, x=90, y =50) {
         graphics.clear();
-
+        if(this.upgradeWindow.visible){
+            x=50;
+        }
         // 1. 배경 (검정색)
         graphics.fillStyle(0x000000);
         graphics.fillRect(x, y, 200, 20);
@@ -299,11 +303,14 @@ class UIScene extends Phaser.Scene {
         graphics.setDepth(12);
         // 3. 텍스트 업데이트
         this.hpText.setText(`Castle HP: ${this.stat.hp}/${this.stat.maxHp}`);
+        this.hpText.x = x; // 체력바와 같은 X 위치로 이동
         this.hpText.setDepth(12);
     }
     drawStatText() {
         // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
-        const X = -30; // 텍스트 시작 X 좌표
+        
+        const { width, height } = this.cameras.main;
+        const X = -10; // 텍스트 시작 X 좌표
         const Y = 80; // 텍스트 시작 Y 좌표
         const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
 
@@ -320,23 +327,31 @@ class UIScene extends Phaser.Scene {
         // 만약 기존에 텍스트 객체들이 생성되지 않았다면 최초 1회 생성합니다.
         if (!this.statTexts) {
             this.statTexts = {};
+            
             // 💰 골드 아이콘과 텍스트 배치
             //this.add.image(X+20, Y + 30, 'icon_gold').setOrigin(0, 0.5).setScale(0.8);
-            this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
-
+             this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
             // 🛡️ 방어력 아이콘과 텍스트 배치
-            //this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
-            this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
-
+           // this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
+             this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
             // 👥 인원 아이콘과 텍스트 배치 (Y축 간격을 35px씩 띄웁니다)
             //this.add.image(X+20, Y + 100, 'icon_manpower').setOrigin(0, 0.5).setScale(0.8);
+            
             this.statTexts.manPower = this.add.text(X+50, Y + 100, '', textStyle).setOrigin(0, 0.5);
-
             //🏹
+            
             this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
-
+            
             this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
-
+           /*
+            const dX = width/2;
+            const dY = height-160;
+            this.statTexts.gold = this.add.text(dX, dY, '', textStyle).setOrigin(0.5);
+            this.statTexts.armor = this.add.text(X+80, Y + 30, '', textStyle).setOrigin(0.5);
+            this.statTexts.manPower = this.add.text(dX-200, dY +30, '', textStyle).setOrigin(0.5);
+            this.statTexts.archer = this.add.text(dX-50, dY +30, '', textStyle).setOrigin(0.5);
+            this.statTexts.witch = this.add.text(dX+150, dY +30, '', textStyle).setOrigin(0.5);
+             */
         }
 
         // 💡 실제 값만 업데이트 (컬러링 추가로 시각 효과 극대화)
@@ -351,13 +366,20 @@ class UIScene extends Phaser.Scene {
         this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
         this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
         this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#3498db'); // 파란색 계열
-        this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost})`).setColor('#2ecc71'); // 초록색 계열
-        this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost})`).setColor('#9b59b6'); // 보라색 계열
+        this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
+        this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#9b59b6'); // 보라색 계열
+        //this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost})`).setColor('#2ecc71'); // 초록색 계열
+        //this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost})`).setColor('#9b59b6'); // 보라색 계열
+        
         this.statTexts.armor.setDepth(22);
         this.statTexts.manPower.setDepth(22);
         this.statTexts.gold.setDepth(22);
         this.statTexts.archer.setDepth(22);
         this.statTexts.witch.setDepth(22);
+
+        if(this.nextWaveBtn){
+            this.nextWaveBtn.setText(`다음 웨이브${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
+        }
     }
 
     showResultWindow( data ) {
@@ -473,6 +495,8 @@ class UIScene extends Phaser.Scene {
          this.nextStageBtn.on('pointerdown', () => {
              this.resultWindow.setVisible(false);
              this.upgradeWindow.setVisible(true);
+             this.saveButton.setText('💾저장하기');
+             this.drawHealthBar(this.healthBar, 60, 50 ); // 위치
          });
          this.nextStageBtn.setVisible(false); // 초기에는 숨김
          this.resultWindow.add(this.nextStageBtn);
@@ -491,43 +515,47 @@ class UIScene extends Phaser.Scene {
         // 배경판
         const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
         this.upgradeWindow.add(bg);
+        bg.setDepth(0); // 배경이 제일 뒤에 있도록
+
+        const bg2 = this.add.rectangle(-width/2+150, 0, 250, height, 0x000000, 0.5).setStrokeStyle(2, 0xffffff);
+        this.upgradeWindow.add(bg2);
 
         // 2. 내용이 표시될 서브 컨테이너 (여기에 리스트를 그립니다)
         this.contentArea = this.add.container(0, -120); 
         this.upgradeWindow.add(this.contentArea);
+
 
         // 1. 데이터 정의
 
         const title = this.add.text(0, -240, '업그레이드', { fontSize: '36px', fill: '#ffffff', padding:{x:3,y:3} }).setOrigin(0.5);
         this.upgradeWindow.add(title);
 
-        this.costTxt = this.add.text(0, 220, `Cost : ${0}`, { fontSize: '28px', fill: '#ff0', padding:{x:3,y:3} }).setOrigin(0.5);
-        this.upgradeWindow.add(this.costTxt);    
-        this.fcostTxt(this.registry.get('gold') || 0); // 초기 비용 텍스트 설정
-
-        const nextWaveBtn = this.add.text(100, 280, '다음 웨이브', {
+        //this.costTxt = this.add.text(0, 220, `Cost : ${0}`, { fontSize: '28px', fill: '#ff0', padding:{x:3,y:3} }).setOrigin(0.5);
+        //this.upgradeWindow.add(this.costTxt);    
+        //this.fcostTxt(this.registry.get('gold') || 0); // 초기 비용 텍스트 설정
+        const nextBg = this.add.rectangle(width/2-220 , 280, 320,  60,  0x444444).setStrokeStyle(2, 0xffffff)
+                .setInteractive({ useHandCursor: true }).setOrigin(0.5)
+        this.nextWaveBtn = this.add.text(width/2-220, 280, '다음 웨이브', {
             fontSize: '28px',
             fill: '#ffffff',
-            backgroundColor: '#333333',
             padding: { x: 30, y: 20 }
         })
         .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true }); // 마우스 커서를 손모양으로 변경
-        nextWaveBtn.on('pointerdown', () => {
+        nextBg.on('pointerdown', () => {
             this.nextGameStart();
         });
-        this.upgradeWindow.add(nextWaveBtn);
+        this.upgradeWindow.add([nextBg, this.nextWaveBtn]);
 
         //저장버튼
-        this.saveButton = this.add.text(-110, 280, '저장하기', {
+        const saveBg = this.add.rectangle(-width/2 +150 , 280, 200,  60,  0x444444).setStrokeStyle(2, 0xffffff)
+                .setInteractive({ useHandCursor: true }).setOrigin(0.5);
+        this.saveButton = this.add.text(-width/2 +150 , 280, '💾저장하기', {
             fontSize: '28px',
             fill: '#ffffff',
-            backgroundColor: '#333333',
             padding: { x: 30, y: 20 }
         })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true }); // 마우스 커서를 손모양으로 변경
-        this.saveButton.on('pointerdown', () => {
+        .setOrigin(0.5);
+        saveBg.on('pointerdown', () => {
             if(confirm('게임 진행 상황이 저장됩니다. 계속하시겠습니까?')){
                 this.scene.get('GameScene').saveGame();
                 this.saveButton.setText('저장완료!');
@@ -536,7 +564,7 @@ class UIScene extends Phaser.Scene {
             }
             
         });
-        this.upgradeWindow.add(this.saveButton);
+        this.upgradeWindow.add([saveBg, this.saveButton]);
 
         // 2. 카테고리 이름들만 배열로 추출
         // 결과: ['지휘소', '성당', '궁수양성소', '마술사의 샘']
@@ -591,12 +619,12 @@ class UIScene extends Phaser.Scene {
         });
         this.upgradeWindow.setDepth(11); // hp바와 pause사이
     }
-    fcostTxt(newValue){
-        if(this.costTxt){
-            this.costTxt.setText(`Cost : ${newValue.toLocaleString()}`);
-        }
-    }
+    
     showCategory(categoryName) {
+        const { width, height } = this.cameras.main;
+        const X = -400; // 텍스트 시작 X 좌표
+        const Y = 80; // 텍스트 시작 Y 좌표
+
         // 1. 기존 리스트 싹 비우기 (중요!)
         this.contentArea.removeAll(true);
 
@@ -625,11 +653,11 @@ class UIScene extends Phaser.Scene {
             if(item.manPower){
                 itemDisplayName = `${item.name}(현재 ${this.stat[item.tag]}명)`;
             }
-            const itemText = this.add.text(-400, yPos, itemDisplayName, {
+            const itemText = this.add.text(X + 100, yPos, itemDisplayName, {
                 fontSize: '32px',
                 padding: { x: 3, y: 3 }
             });
-            const itemInfo = this.add.text(-400, yPos+35,`${item.info}`,{
+            const itemInfo = this.add.text(X +100, yPos+35,`${item.info}`,{
                 fontSize: '20px',
                 padding: { x: 3, y: 3 }
             });
@@ -641,7 +669,7 @@ class UIScene extends Phaser.Scene {
             if( item.manPower){
                 //고용인 경우
                  btnName = '고용';
-                btnColor='rgba(0, 157, 255, 1)';
+                btnColor='#ff0';
             }else if(item.maxLevel>1){
                 if(item.level < item.maxLevel ){
                     btnName = '강화';
@@ -662,12 +690,12 @@ class UIScene extends Phaser.Scene {
                 }
             }
             
-             const bg = this.add.rectangle(300+80, yPos+25, 160, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
+             const bg = this.add.rectangle(width/2-120, yPos+25, 160, 60, 0x444444).setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
                 
             
-            const upBtn = this.add.text(300+80, yPos+25, item.level <item.maxLevel ? `${btnName}(-${item.cost.toLocaleString()})` : `${btnName}`, { 
-                fontSize: '28px', 
+            const upBtn = this.add.text(width/2-120, yPos+25, item.level <item.maxLevel ? `${btnName}(💰${item.cost.toLocaleString()})` : `${btnName}`, { 
+                fontSize: '24px', 
                 color:  btnColor,
                 padding: { x: 8, y: 8 },
                 align: 'center'
