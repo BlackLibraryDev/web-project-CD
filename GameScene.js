@@ -52,22 +52,22 @@ class GameScene extends Phaser.Scene {
         // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
         this.upgrades = {
             'cathedral': [
-                { tag:'conversion', name: '개종(👥++)', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
+                { tag:'conversion', name: '👥개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
                 { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
             
             
             'barracks': [
-                { tag:'archer', name: '궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
+                { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
                 { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 30, info:'궁병이 더 빨리 화살을 쏩니다'}
                 //{ tag:'archerRange', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
             ],
             'magichall': [
-                //{ tag:'witch', name: '마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'},
+                //{ tag:'witch', name: '🪄마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'},
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
-                { tag:'wallType', name: '축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
+                { tag:'wallType', name: '🛡️축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
                 { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 20, info:'성벽의 최대 내구도를 증가시킵니다'},
                 { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
                 { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
