@@ -29,8 +29,10 @@ class PreloadScene extends Phaser.Scene {
 
         this.load.spritesheet('mobsprite1', 'assets/mobsprite1.png', { frameWidth: 128, frameHeight: 128});
         this.load.spritesheet('mobsprite2', 'assets/mobsprite2.png', { frameWidth: 128, frameHeight: 128});
-
         
+        this.load.spritesheet('mobsprite3', 'assets/mobsprite3.png', { frameWidth: 128, frameHeight: 128});
+        this.load.spritesheet('mobsprite3_fire', 'assets/mobsprite3_fire.png', { frameWidth: 128, frameHeight: 128});
+
         this.load.spritesheet('mobsprite10', 'assets/mobsprite10.png', { frameWidth: 128, frameHeight: 128});
         //this.load.image('wall', 'assets/wall.png');
         // 사운드나 폰트도 여기서 로드
@@ -72,6 +74,18 @@ class PreloadScene extends Phaser.Scene {
             frames: this.anims.generateFrameNumbers('mobsprite2', { start: 0, end: 1 }),
             frameRate: 4, 
             repeat: -1
+        });
+        this.anims.create({
+            key: 'mob3_walk',
+            frames: this.anims.generateFrameNumbers('mobsprite3', { start: 0, end: 1 }),
+            frameRate: 4, 
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'mob3_fire',
+            frames: this.anims.generateFrameNumbers('mobsprite3_fire', { start: 0, end: 3 }),
+            frameRate: 20, 
+            repeat: 0
         });
          this.anims.create({
             key: 'mob10_walk',

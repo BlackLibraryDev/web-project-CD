@@ -137,6 +137,7 @@ class MainMenuScene extends Phaser.Scene {
     fadeOutAndDestroy(scene, mob) {
         if(mob.body){
             mob.body.enable = false;
+            mob.anims.stop(); // 애니메이션도 멈춤
         }
         this.mobBloodEffect(mob); // 피 효과 추가
 

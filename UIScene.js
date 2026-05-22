@@ -410,39 +410,54 @@ class UIScene extends Phaser.Scene {
         // 2. 각 항목의 텍스트 객체를 빈 상태('')로 생성하여 resultWindow에 장착
         // 세로 위치(Y)를 40px 간격으로 나란히 배치합니다.
         const Ypos =-140;
-        const txtMobs = this.add.text(0, Ypos, '', labelStyle).setOrigin(0.5);
-        const txtGold = this.add.text(0, Ypos + 60, '', labelStyle).setOrigin(0.5);
-        const txtFee1 = this.add.text(0, Ypos + 130, '', labelStyle).setOrigin(0.5);
-        const txtFee2 = this.add.text(0, Ypos + 190, '', labelStyle).setOrigin(0.5);
-        const txtTotal = this.add.text(0, Ypos + 300, '', { ...labelStyle, fontSize: '40px', fill: '#ffcc00' }).setOrigin(0.5);
-        this.resultWindow.add([txtMobs, txtGold, txtFee1, txtFee2,txtTotal]);
+        const txtMobs = this.add.text(0, Ypos -40,'', labelStyle).setOrigin(0.5);
+        const txtConv = this.add.text(0, Ypos + 20, '', labelStyle).setOrigin(0.5);
+
+        const txtGold = this.add.text(0, Ypos + 100, '', labelStyle).setOrigin(0.5);
+        const txtFee1 = this.add.text(0, Ypos + 160, '', labelStyle).setOrigin(0.5);
+        const txtFee2 = this.add.text(0, Ypos + 210, '', labelStyle).setOrigin(0.5);
+        const txtDeath = this.add.text(0, Ypos + 260, '', labelStyle).setOrigin(0.5);
+
+        const txtTotal = this.add.text(0, Ypos + 330, '', { ...labelStyle, fontSize: '40px', fill: '#ffcc00' }).setOrigin(0.5);
+        this.resultWindow.add([txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtDeath, txtTotal]);
         // 💡 바구니에 저장해두어 다음 호출 때 지울 수 있게 합니다.
-        this.resultTexts.push(txtMobs, txtGold, txtFee1, txtFee2, txtTotal);
+        this.resultTexts.push(txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtDeath, txtTotal);
 
         // 3. ⏱️ 시간차(Delay)를 두고 텍스트를 하나씩 채워나가는 연출
         console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
+
         // 0.4초 뒤: 쓰러트린 적 표시
         this.time.delayedCall(400, () => {
             txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
+        this.time.delayedCall(700, () => {
+            txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
+            // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
+        });
+
         // 0.8초 뒤: 획득한 골드 표시
-        this.time.delayedCall(1000, () => {
+        this.time.delayedCall(1200, () => {
             txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
         });
 
         // 1.2초 뒤: 유지비 표시
-        this.time.delayedCall(1400, () => {
-            txtFee1.setText(`💸 유지비 (궁수) : -${(data.archerCost*data.archer).toLocaleString()} (${data.archer}x${data.archerCost}) G`).setColor('#ff4d4d');
+        this.time.delayedCall(1600, () => {
+            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} (${data.archer}x${data.archerCost}) G`).setColor('#ff4d4d');
         });
-        this.time.delayedCall(1800, () => {
-            txtFee2.setText(`💸 유지비 (마법사) : -${(data.witchCost*data.witch).toLocaleString()} (${data.witch}x${data.witchCost}) G`).setColor('#ff4d4d');
+        this.time.delayedCall(2000, () => {
+            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} (${data.witch}x${data.witchCost}) G`).setColor('#ff4d4d');
+        });
+        //게리슨 사망자 표시
+        this.time.delayedCall(2600, () =>{
+            txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+        
         });
 
 
         // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
-        this.time.delayedCall(2400, () => {
+        this.time.delayedCall(3200, () => {
             // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
             const scoreCounter = { value: 0 };
             
@@ -460,7 +475,7 @@ class UIScene extends Phaser.Scene {
                     this.nextStageBtn.setVisible(true); // 숫자가 올라가는 동안 버튼은 숨김
                     this.tweens.add({
                         targets: txtTotal,
-                        scale: 1.2,
+                        scale: 1.3,
                         duration: 400,
                         yoyo: true,
                         ease: 'Quad.easeInOut'
@@ -513,11 +528,11 @@ class UIScene extends Phaser.Scene {
         this.upgradeWindow = this.add.container(width / 2, height / 2).setVisible(false);
         
         // 배경판
-        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
+        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9);//.setStrokeStyle(2, 0xffffff);
         this.upgradeWindow.add(bg);
         bg.setDepth(0); // 배경이 제일 뒤에 있도록
 
-        const bg2 = this.add.rectangle(-width/2+150, 0, 250, height, 0x000000, 0.5).setStrokeStyle(2, 0xffffff);
+        const bg2 = this.add.rectangle(-width/2+150, 0, 250, height, 0x222222, 0.9);
         this.upgradeWindow.add(bg2);
 
         // 2. 내용이 표시될 서브 컨테이너 (여기에 리스트를 그립니다)

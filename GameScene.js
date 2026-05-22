@@ -53,7 +53,7 @@ class GameScene extends Phaser.Scene {
         this.upgrades = {
             'cathedral': [
                 { tag:'conversion', name: '개종(👥++)', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
-                { tag:'faith', name: '신앙심 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'신앙심을 연구하여 더 빨리 적을 개종시킵니다.'}
+                { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
             
             
@@ -67,7 +67,7 @@ class GameScene extends Phaser.Scene {
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
-                { tag:'wallType', name: '축성술', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력을 얻습니다.'},
+                { tag:'wallType', name: '축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
                 { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 20, info:'성벽의 최대 내구도를 증가시킵니다'},
                 { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
                 { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
@@ -249,12 +249,18 @@ class GameScene extends Phaser.Scene {
             element.remove();
         });
         this.spawnTimers = [];
+        //통계 데이터 초기화
         this.data ={
             mobNumber:0, earnScore:0, earnGold:0 , earnManpower:0,
+            
             archer:this.stat.archer, 
             archerCost: this.stat.archerCost, 
+            archerDeath:0,
             witch:this.stat.witch, 
-            witchCost:this.stat.witchCost
+            witchCost:this.stat.witchCost,
+            witchDeath:0,
+
+            garrisonLoss:0
         };
         this.stat.unitPer = 0; // 유닛 제거 확률 초기화
 
@@ -267,19 +273,24 @@ class GameScene extends Phaser.Scene {
         if(this.wave.value>=4){
             this.addSpawnTimer({mobNumber:1},1600);
         }
-        if(this.wave.value>=6){
-            this.addSpawnTimer({mobNumber:1, hp:20},1800);
-        }
-        if(this.wave.value>=8 && this.wave.value<10){
-            this.addSpawnTimer({mobNumber:10, isDragable:false , hp:2},6800);
+
+        if(this.wave.value>=6 && this.wave.value<10){
+            this.addSpawnTimer({mobNumber:3},2200);
         }
         if(this.wave.value>=10){
+            this.addSpawnTimer({mobNumber:3},2200 , 2);
+            
+        }
+        if(this.wave.value>=11 && this.wave.value<12){
+            this.addSpawnTimer({mobNumber:10, isDragable:false , hp:3},6800);
+        }
+        if(this.wave.value>=12){
             this.addSpawnTimer({mobNumber:10, isDragable:false },6400);
         }
         //성당 고문실
         this.setCathedral();
 
-        //궁수 활 매커니즘
+        //방어 궁수 활 매커니즘
         this.archeryTimer=null;
         if(this.stat.archer>0){
             this.archerText.setVisible(true);
@@ -386,11 +397,14 @@ class GameScene extends Phaser.Scene {
         mob.isThrown = false;
         mob.isDragging  = false;
         mob.highestY = mob.y;
+        mob.fireanime = null;
         //개인변수
         mob.score = mobData.score || 1;
         mob.speed = mobData.speed || 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
         mob.damage = mobData.damage || 1;
         mob.hp = mobData.hp || 1;
+        mob.range = mobData.range || 10;
+        mob.attackTime = 1000; // 공격 간격 (ms)
         
         
         switch (mobData.mobNumber){
@@ -403,28 +417,44 @@ class GameScene extends Phaser.Scene {
             case 2:
                 //wallbreaker
                 mob.speed = mobData.speed || 80 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
-                mob.damage = mobData.damage || 5;
+                mob.damage = mobData.damage || 4;
                 mob.score = mobData.score || 2;
                 mob.hp = mobData.hp || 2;
             break;
-
+            case 3:
+                //archer
+                mob.speed = mobData.speed || 90 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.damage = mobData.damage || 1;
+                mob.score = mobData.score || 2;
+                mob.hp = mobData.hp || 1;
+                mob.range = 550;
+                mob.killUnit = 0.1; // 공격 시 때 10% 확률로 유닛 제거
+                mob.fireanime = `mob${mobData.mobNumber}_fire`;
+                mob.rangeWp ='arrow';
+                mob.attackTime = 2100;
+                mob.body.setOffset(0, Phaser.Math.Between(-15, -10)); // 히트박스 위치 조정
+                
+            break;
             case 10:
                 //Giant
-                mob.speed = mobData.speed || 70 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.speed = mobData.speed || 210 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 3;
-                mob.score = mobData.score || 5;
-                mob.hp = mobData.hp || 3;
+                mob.score = mobData.score || 3;
+                mob.hp = mobData.hp || 4;
                 mob.killUnit = 0.3; // 공격 시 때 30% 확률로 유닛 제거
                 mob.setScale(2);
                 mob.y -= 96; // 크기가 커졌으니 살짝 띄워줌
+                mob.body.setOffset(0, Phaser.Math.Between(0, 15)); // 히트박스 위치 조정
             break;
         }
     }
-    addSpawnTimer(mobData, delayTimer =2000){
+    addSpawnTimer(mobData, delayTimer =2000, count = 1){
         const spawnTimer = this.time.addEvent({
         delay: delayTimer,
             callback:() => {
-                this.spawnMob(mobData);
+                for(let i =0; i< count ; i++){
+                    this.spawnMob(mobData);
+                }
             },  
             callbackScope: this,
             loop: true
@@ -493,28 +523,44 @@ class GameScene extends Phaser.Scene {
             // 드래그 중인 몹은 로직에서 제외
             if (mob.isDragging || mob.isThrown) return;
             
-            if (mob.x < 200 && this.isWaveInProgress) {
+            if (mob.x < 200 + mob.range && this.isWaveInProgress) {
                 // --- [성벽 도착 상태] ---
                 mob.body.setVelocityX(0); // 이동 정지
                 if (!mob.isAttacking) {
                     mob.isAttacking = true;
-                    
+                    if(mob.fireanime != null){
+                        mob.anims.play(mob.fireanime, true);
+                    }
                 }
 
                 // 공격 쿨타임 체크 (1초마다)
-                if (!mob.lastAttackTime || time > mob.lastAttackTime + 1000) {
+                if (!mob.lastAttackTime || time > mob.lastAttackTime + mob.attackTime) {
                     mob.lastAttackTime = time;
-                    this.takeDamage( mob );
+                    if(mob.rangeWp != null){
+                        //원거리무기가 있을경우
+                        if(mob.rangeWp =='arrow'){
+                            this.fireArrow(mob.x, mob.y, this.castle.x ,  this.castle.y-100 , mob.rangeWp);
+                            const rangeCool = Phaser.Math.Clamp( (mob.x - this.castle.x)*2, 200, 1200);
+                            //딜레이
+                            this.time.delayedCall(rangeCool, () => {
+                                this.takeDamage( mob );
+                            });
+                        }
+                    }else{
+                        //근접공격
+                        this.takeDamage( mob );
 
+                    }
+                    mob.resetX = mob.x > 200 ? mob.x : 200; //최소거리
                     // 뒤로 물러나는 애니메이션
                     this.tweens.add({
                         targets: mob,
-                        x: 160,          // 100에서 120으로 살짝 밀려남
+                        x: mob.x -30,          //  살짝 밀려남
                         duration: 150,
                         yoyo: true,      // 다시 100으로 돌아옴
                         ease: 'Back.easeOut',
                         onComplete: () => {
-                            if (mob.active) mob.x = 200 - Math.random()*20 ; // 위치 재고정
+                            if (mob.active) mob.x =mob.resetX ; // 위치 재고정
                         }
                     });
                 }
@@ -522,6 +568,7 @@ class GameScene extends Phaser.Scene {
                 // --- [이동 상태] ---
                 // 던져진 상태가 아니고 성벽 밖이라면 왼쪽으로 이동
                 mob.isAttacking = false;
+                
                 if(this.isWaveInProgress){
                     mob.body.setVelocityX(-mob.speed);
                 }else{
@@ -674,11 +721,16 @@ class GameScene extends Phaser.Scene {
         if(mob.killUnit !=null){
             this.stat.unitPer += mob.killUnit; // 제거 확률 누적
 
-            const removeCount = Math.random() < this.stat.unitPer ? 1 : 0; // 확률적으로 제거 여부 결정
-            if(removeCount > 0){
+            const removeCount = Math.random(); //< this.stat.unitPer ? 1 : 0; // 확률적으로 제거 여부 결정
+            
+            //console.log( ` ${this.stat.unitPer>removeCount? '유닛제거 - ':''}${Math.floor(this.stat.unitPer*100)/100} : ${removeCount}`)
+            if(this.stat.unitPer - this.stat.armor*0.04  >removeCount ){
                 this.stat.unitPer = 0; // 제거가 발생하면 확률 초기화
+                
+
                 if(this.stat.archer > 0){   
-                    this.stat.archer -= removeCount; // 궁병 제거
+                    this.stat.archer --; // 궁병 제거
+                    this.data.archerDeath++; 
                     if(this.stat.archer < 0) this.stat.archer = 0; // 음수 방지
                     this.registry.set('stat', this.stat);
                     this.archerText.setText(`🏹 x${this.stat.archer}`);
@@ -688,8 +740,29 @@ class GameScene extends Phaser.Scene {
                         this.archeryTimer?.remove();
                         this.archeryTimer = null;
                     }
+                    
                 }
                 //마법사 제거 로직도 여기에 추가 가능
+                //글자 확대효과
+                //if (this.castleShakeTween && this.castleShakeTween.isActive()) {
+                if(this.archerTextEffect && this.archerTextEffect.isActive() ){
+                    this.archerTextEffect.remove();
+                }
+                this.archerText.setColor('#ff0000');
+                this.archerTextEffect = this.tweens.add({
+                    targets: this.archerText,
+                    scale: 1.5, 
+                    duration: 200,
+                    yoyo: true,
+                    
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => {
+                        this.archerText.setColor('#2ecc71');
+                        this.archerText.setScale(1); // 원래 크기로 복귀
+                        this.archerText.clearTint();
+                        this.archerTextEffect = null; // 트윈이 끝난 후 null 처리
+                    }
+                });
             }
         }
         
@@ -730,6 +803,7 @@ class GameScene extends Phaser.Scene {
         // 1. 물리 엔진 비활성화 (사라지는 동안 충돌하거나 움직이지 않게 함)
         if(target.body){
             target.body.enable = false;
+            target.anims.stop(); // 애니메이션도 멈춤
         }
         this.updateScore(target.score);
         this.mobBloodEffect(target); // 피 효과 추가
@@ -798,7 +872,7 @@ class GameScene extends Phaser.Scene {
     _fireArrowInternal(startX, startY, targetX, targetY){
         // 1. 화살 스프라이트 생성 및 물리 적용
         const arrow = this.physics.add.sprite(startX, startY, 'arrow');
-        
+        arrow.setDepth(10);
         // 2. 화살이 중력의 영향을 받게 합니다. (포물선의 핵심)
         // 이 수치가 높을수록 화살이 묵직하게 떨어집니다. 게임에 맞게 조절하세요.
         arrow.body.setGravityY(800); 
@@ -907,7 +981,24 @@ class GameScene extends Phaser.Scene {
             this.wave = data.wave || this.wave;
             this.gold = data.gold || this.gold;
             this.score = data.score || this.score;
+            
+            
+            const categories = Object.keys(data.upgrades);
+            categories.forEach((name) => {
+                const arr = data.upgrades[name];
+                const org = this.upgrades[name];
+                if(arr ==null){
+                    
+                }else{
+                     for(let i =0 ;i < arr.length ; i++){
+                    arr[i].info = org[i].info;
+                    arr[i].name = org[i].name;
+                }
+                }
+               
+            });
             this.upgrades = data.upgrades || this.upgrades;
+
             this.registry.set('stat', this.stat);
             this.registry.set('wave', this.wave);
             this.registry.set('gold', this.gold);
