@@ -12,6 +12,25 @@ class MainMenuScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        // GameScene이나 UIScene의 create() 단계에 배치
+        const fsButton = this.add.text(150, height-40, '🖥️ FULLSCREEN', {
+            fontFamily: 'Arial',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(10);
+
+        // 버튼을 누르면 켜져있을 땐 꺼지고, 꺼져있을 땐 켜집니다.
+        fsButton.on('pointerdown', () => {
+            if (this.scale.isFullscreen) {
+                this.scale.stopFullscreen(); // 전체화면 끄기
+                fsButton.setText('🖥️ FULLSCREEN');
+            } else {
+                this.scale.startFullscreen(); // 전체화면 켜기
+                fsButton.setText('❌ EXIT FULL');
+            }
+        });
 
         // 배경 배치
         const bg = this.add.image(width / 2, height / 2, 'menu_bg');
