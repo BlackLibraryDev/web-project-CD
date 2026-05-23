@@ -196,9 +196,12 @@ class UIScene extends Phaser.Scene {
             }
         }, this);
 
+        //스킬창 표시
+        this.createSkillUI();
         //게임 시작
         const savedData = localStorage.getItem('projectCD_data');
         if(savedData){
+            //게임시작 전 업그레이드 창 
             this.scene.get('GameScene').setBgImage('background1',true);
             this.upgradeWindow.setVisible(true);
             this.currentCategory = 'cathedral'; // 기본 카테고리 설정
@@ -207,12 +210,13 @@ class UIScene extends Phaser.Scene {
             this.drawStatText();
             this.wave = this.registry.get('wave');
             this.drawWaveBar(this.waveBar);
-            
+            this.setSkillUIVisibility(false);
         }else{
             //저장된 데이터가 없으면 바로 게임 시작
             this.nextGameStart();
         }
 
+        
 
         // html에서 설정한 전역 변수 가져오기 (없을 경우를 대비해 기본값 세팅)
         const currentVersion = window.GAME_VERSION || "알 수 없는 버전";
@@ -245,28 +249,13 @@ class UIScene extends Phaser.Scene {
 
         
     }
-     update(time, delta) {
-        if(!this.wave || this.waveBar ==null){
-            return;
-        }
-        if(this.isPaused){
-            return;
-        }
-        if (this.timer > 0) {
-            // delta는 이전 프레임에서 지난 시간(ms)입니다. (보통 1프레임당 약 16.6ms)
-            this.timer -= delta; 
-
-            if (this.timer <= 0) {
-                this.timer = 0;
-            }
-            this.drawWaveBar(this.waveBar)
-        }
-    }
+     
+    /////////////////////////////////////////////////////////////////////////////////
     nextGameStart(){
         this.upgradeWindow.setVisible(false);
         this.drawStatText();
         this.drawHealthBar(this.healthBar, 90, 50 ); // 위치
-        
+        this.setSkillUIVisibility(true);//스킬 모두 표시
         this.scene.get('GameScene').events.emit('startNextWave'); // GameScene에 다음 웨이브 시작 신호 보냄
         this.isPaused=false;
     }
@@ -383,6 +372,7 @@ class UIScene extends Phaser.Scene {
     }
 
     showResultWindow( data ) {
+        this.setSkillUIVisibility(false);
         this.nextStageBtn.setVisible(false); // 숫자가 올라가는 동안 버튼은 숨김
         // 1. 폰트 스타일 설정 (테두리를 주어 가독성 확보)
         const labelStyle = {
@@ -570,14 +560,16 @@ class UIScene extends Phaser.Scene {
             padding: { x: 30, y: 20 }
         })
         .setOrigin(0.5);
-        saveBg.on('pointerdown', () => {
-            if(confirm('게임 진행 상황이 저장됩니다. 계속하시겠습니까?')){
-                this.scene.get('GameScene').saveGame();
-                this.saveButton.setText('저장완료!');
-            }else{
-                return;
-            }
-            
+        saveBg.on('pointerdown', (pointer, localX, localY, event) => {
+            if (pointer && pointer.event) pointer.event.preventDefault();
+            // 💡 함수를 호출하면서 문구와 실행할 로직을 던져줍니다.
+            this.showConfirmPopup(
+                '게임 진행 상황이 저장됩니다.\n계속하시겠습니까?', 
+                () => {
+                    this.scene.get('GameScene').saveGame();
+                    this.saveButton.setText('저장완료!');
+                }
+            );
         });
         this.upgradeWindow.add([saveBg, this.saveButton]);
 
@@ -751,6 +743,294 @@ class UIScene extends Phaser.Scene {
         }
     }
 
+    //스킬표시 UI
+    /**
+     * 💡 모든 스킬 상자 UI의 가시성을 한 번에 조절하는 함수
+     * @param {boolean} isVisible - true면 보이고, false면 숨겨집니다.
+     */
+    setSkillUIVisibility(isVisible) {
+        if (!this.skillUIComponents) return;
+
+        Object.keys(this.skillUIComponents).forEach(tag => {
+            const comp = this.skillUIComponents[tag];
+            
+            if (comp) {
+                // 1. 기본 바탕 불투명 상자 숨김/보임
+                if (comp.baseBox) comp.baseBox.setVisible(isVisible);
+                
+                // 2. 쿨타임 회전 그림자 레이어 숨김/보임
+                if (comp.coolShadow) comp.coolShadow.setVisible(isVisible);
+                
+                // 3. 중앙 스킬 텍스트 글씨 숨김/보임
+                if (comp.text) comp.text.setVisible(isVisible);
+
+                // 💡 [핵심] 삐져나감을 막아주던 사각형 마스크 틀 자체도 함께 숨겨야 잔상이 안 남습니다!
+                if (comp.maskGraphics) comp.maskGraphics.setVisible(isVisible);
+            }
+        });
+
+        // 스킬 상자 자체를 숨길 때는 오작동 방지를 위해 현재 장전(토글)된 상태를 풀어줍니다.
+        if (!isVisible) {
+            this.deactivateAllSkills();
+        }
+    }
+    createSkillUI() {
+        const { width, height } = this.cameras.main;
+        // 1. 데이터 베이스 참조 (스킬 리스트)
+        this.skills = [
+            { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock: true, mp: 0 }, 
+            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 20 },
+            { tag: 'conversion', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: true, mp: 80 }
+        ];
+
+        // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
+        this.activeSkillTag = null; 
+        const spacing = 90; // 아이콘 간격
+        const startX = width/2 - (this.skills.length/2)*spacing + spacing/2; // 스킬 바 시작 X 위치
+        const startY = height-50;
+
+        this.skillUIComponents = {};
+
+        this.skills.forEach((skill, index) => {
+            if (!skill.unlock) return;
+
+            const x = startX + (index * spacing);
+            const y = startY;
+            const size = 80; // 사각형 상자 크기 (60x60)
+
+            // 1. 🔲 기본 바탕 상자 (언제나 불투명한 은은한 흑색)
+            const baseBox = this.add.graphics();
+            baseBox.fillStyle(0x222222, 1);
+            baseBox.fillRect(x - size / 2, y - size / 2, size, size);
+            baseBox.lineStyle(2, 0xaaaaaa, 1);
+            baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
+
+            
+
+            // 3. 🍕 [핵심] 시계방향 피자 조각 모양을 연출할 마스크 그래픽스 생성
+            const maskGraphics = this.add.graphics();
+            maskGraphics.fillStyle(0xffffff, 1);
+            // 💡 상자 크기와 완벽하게 일치하는 사각형을 마스크 베이스로 삼습니다.
+            maskGraphics.fillRect(x - size / 2, y - size / 2, size, size);
+            
+            const coolShadow = this.add.graphics();
+            const mask = maskGraphics.createGeometryMask();
+            coolShadow.setMask(mask);
+            
+            
+
+            // 4. 🖱️ 마우스 터치 히트 영역 지정 (바탕 상자 기준)
+            const hitArea = new Phaser.Geom.Rectangle(x - size / 2, y - size / 2, size, size);
+            baseBox.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+
+            // 5. 전면 글자 배치
+            const fontStyle = {
+                fontFamily: 'Impact, Arial Black, sans-serif',
+                fontSize: '28px',
+                fill: '#aaaaaa',
+                align: 'center'
+            };
+            const labelText = this.add.text(x, y, `${skill.name}\n${skill.mp}MP`, fontStyle).setOrigin(0.5);
+
+            // 6. 모든 데이터를 바구니에 저장
+            this.skillUIComponents[skill.tag] = {
+                baseBox: baseBox,
+                coolShadow: coolShadow,       // 쿨타임 검은 레이어
+                maskGraphics: maskGraphics,   // 부채꼴 마스크를 실시간으로 그릴 통로
+                text: labelText,
+                skillData: skill,
+                size: size,
+                startX: x,
+                startY: y
+            };
+
+            // 7. 클릭(토글) 이벤트
+            baseBox.on('pointerdown', () => {
+                if (skill.cooltime > 0) return;
+
+                if (this.activeSkillTag === skill.tag) {
+                    this.deactivateAllSkills();
+                } else {
+                    this.deactivateAllSkills();
+                    this.activeSkillTag = skill.tag;
+                    
+                    // 토글 ON: 테두리를 황금색으로 변경
+                    baseBox.clear();
+                    baseBox.fillStyle(0x332a00, 1);
+                    baseBox.fillRect(x - size / 2, y - size / 2, size, size);
+                    baseBox.lineStyle(4, 0xffcc00, 1);
+                    baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
+                    
+                    labelText.setFill('#ffcc00');
+                    labelText.setScale(1.1);
+                }
+            });
+            
+        });
+       
+    }
+    /**
+     * 모든 스킬의 불빛을 끄고 초기 비활성화 색상으로 되돌리는 함수
+     */
+    deactivateAllSkills() {
+        this.activeSkillTag = null;
+        if (!this.skillUIComponents) return;
+
+        Object.keys(this.skillUIComponents).forEach(tag => {
+            const comp = this.skillUIComponents[tag];
+            
+            comp.baseBox.clear();
+            comp.baseBox.fillStyle(0x222222, 1);
+            comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+            comp.baseBox.lineStyle(2, 0xaaaaaa, 1);
+            comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+            
+            comp.text.setFill('#aaaaaa');
+            comp.text.setScale(1.0);
+        });
+    }
+    update(time, delta) {
+        if(!this.wave || this.waveBar ==null){
+            return;
+        }
+        if(this.isPaused){
+            return;
+        }
+        if (this.timer > 0) {
+            // delta는 이전 프레임에서 지난 시간(ms)입니다. (보통 1프레임당 약 16.6ms)
+            this.timer -= delta; 
+
+            if (this.timer <= 0) {
+                this.timer = 0;
+            }
+            this.drawWaveBar(this.waveBar)
+        }
+
+       
+        if (!this.skills || !this.skillUIComponents) return;
+         // 첫 번째 스킬 상자가 숨겨져 있는지 체크하는 안전장치
+        
+        this.skills.forEach(skill => {
+            const comp = this.skillUIComponents[skill.tag];
+            if (!comp) return;
+
+            if (skill.cooltime > 0) {
+                skill.cooltime -= delta;
+
+                const remainingSec = (skill.cooltime / 1000).toFixed(1);
+                comp.text.setText(`${remainingSec}s\nCOOL`);
+                comp.text.setFill('#ff4d4d');
+                comp.text.setScale(1.0);
+
+                // 💡 [수정] 이제 coolShadow 오브젝트를 실시간으로 갱신해 줍니다.
+                const progress = skill.cooltime / skill.maxCooltime; 
+                
+                comp.coolShadow.clear();
+                comp.coolShadow.fillStyle(0x000000, 0.6); // 60% 불투명 검은색
+
+                const startAngle = Phaser.Math.DegToRad(-90);
+                const endAngle = startAngle + Phaser.Math.DegToRad(360 * progress);
+
+                // 🍕 반지름을 상자 크기보다 훨씬 크게(size * 1.5) 잡아서 부채꼴을 넉넉하게 그립니다.
+                // 어차피 1단계에서 세팅한 사각형 마스크가 바깥 경계선을 싹 다 칼로 자르듯 가려줍니다!
+                comp.coolShadow.slice(
+                    comp.startX, 
+                    comp.startY, 
+                    comp.size * 1.5, // 넉넉하게 큰 반지름
+                    startAngle, 
+                    endAngle, 
+                    false
+                );
+                comp.coolShadow.fillPath();
+
+                // 외곽 테두리선 붉은색 유지
+                comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
+                comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+
+                if (this.activeSkillTag === skill.tag) {
+                    this.activeSkillTag = null;
+                }
+            } else if (skill.cooltime <= 0 && comp.text.text.includes('COOL')) {
+                skill.cooltime = 0;
+                comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                comp.text.setFill('#aaaaaa');
+                
+                // 🟢 쿨타임 종료 시 지우기
+                comp.coolShadow.clear();
+                
+                comp.baseBox.clear();
+                comp.baseBox.fillStyle(0x222222, 1);
+                comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                comp.baseBox.lineStyle(2, 0xaaaaaa, 1);
+                comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+            }
+        });
+        
+    }
+    /**
+     * 💡 언제든 재활용할 수 있는 미니멀 확인 팝업창
+     * @param {string} message - 팝업창에 표시할 안내 문구
+     * @param {function} onConfirm - [ YES ]를 눌렀을 때 실행할 함수
+     */
+    showConfirmPopup(message, onConfirm, onCancel =null) {
+        // 1. 이미 팝업이 떠 있다면 중복 생성 방지
+        if (this.confirmPopup) return;
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // 2. 팝업 컨테이너 생성
+        this.confirmPopup = this.add.container(0, 0);
+        this.confirmPopup.setDepth(50);
+
+        // 3. 뒷배경 클릭 방지용 오버레이
+        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
+        overlay.setInteractive();
+        
+        const box = this.add.rectangle(width / 2, height / 2,  420,200, 0x000000, 1).setStrokeStyle(2, 0xffffff);
+        // 4. 타이포그래피 스타일
+        const textStyle = {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '28px',
+            fill: '#ffffff',
+            stroke: '#111111',
+            strokeThickness: 5,
+            align: 'center'
+        };
+
+        // 전달받은 message로 텍스트 생성
+        const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
+
+        // 버튼 생성
+        const yesButton = this.add.text(width / 2 - 80, height * 0.58, '[ YES ]', { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
+            .setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const noButton = this.add.text(width / 2 + 80, height * 0.58, '[ NO ]', { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
+            .setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        this.confirmPopup.add([overlay, box, titleText, yesButton, noButton]);
+
+        // 호버 효과
+        yesButton.on('pointerover', () => yesButton.setScale(1.1));
+        yesButton.on('pointerout', () => yesButton.setScale(1.0));
+        noButton.on('pointerover', () => noButton.setScale(1.1));
+        noButton.on('pointerout', () => noButton.setScale(1.0));
+
+        // 🟢 YES 클릭 시
+        yesButton.on('pointerdown', () => {
+            if (onConfirm) onConfirm(); // 💡 전달받은 핵심 기능을 여기서 실행!
+            
+            this.confirmPopup.destroy();
+            this.confirmPopup = null;
+        });
+
+        // 🔴 NO 클릭 시
+        noButton.on('pointerdown', () => {
+            if(onCancel) oncancel();
+            this.confirmPopup.destroy();
+            this.confirmPopup = null;
+        });
+    }
     // 4. 다시 시작 로직 함수
     restartGame() {
         // 완전 재시작 
@@ -765,4 +1045,6 @@ class UIScene extends Phaser.Scene {
             */
         window.location.reload();
     }
+
+
 }

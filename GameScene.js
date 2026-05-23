@@ -12,7 +12,7 @@ class GameScene extends Phaser.Scene {
     pauseBtn;
     darkOverLay;
     mobs;
-    groundHeight = 80;
+    groundHeight = 160;
     acceleration = 4; // 드래그 가속도 (던지는 힘에 영향을 줌)
     // score 관련 변수들
     score = 0;
@@ -39,13 +39,21 @@ class GameScene extends Phaser.Scene {
        this.wave={value:0, timer:20000 }
        this.score=0;
        this.gold = 0;
+       this.skills =[
+            {tag:'aimShot', maxCooltime:2400, cooltime:0 , unlock:false, mp:0},
+            {tag:'curse', maxCooltime:2000, cooltime:0, unlock:false, mp:20},
+
+       ];
        this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
+            mp:0, maxMp:0,
             manPower:0, convertionTime:8000,  
             archer:0, 
             archerCost:4, 
             archerCool:1800,   
             witch:0, 
-            witchCost:10
+            witchCost:10,
+            officer:0
+
         };
        
        this.spawnTimers=[];
@@ -79,6 +87,7 @@ class GameScene extends Phaser.Scene {
         this.registry.set('gold', this.gold);
         this.registry.set('stat', this.stat);
         this.registry.set('wave', this.wave);
+        this.registry.set('skills', this.skills);
         
         this.loadGame();
         
@@ -116,16 +125,17 @@ class GameScene extends Phaser.Scene {
             if( this.cathedralTimer==null && mob.x < this.castleX + 50){   
                 //성당 개종 발동 조건: 개종이 해금되어 있고, 개종이 진행 중이지 않고, 몹이 성채 근처에 있을 때
                 this.startCathedralConvertion(mob);
+                this.createBeamEffect(this.cathedral.x+30, this.cathedral.y+50, this.stat.convertionTime , '0xffcc00', 60);
             }
         });
         //성채 이미지
         this.drawCastleImage();
 
         //궁수
-        this.archer = this.add.sprite(this.castleX, config.height-200, 'archer').setDisplaySize(128,128);
+        this.archer = this.add.sprite(this.castleX, config.height - this.groundHeight-120, 'archer').setDisplaySize(128,128);
         this.archer.setDepth(2);
         this.archer.setVisible(false);
-        this.archerText = this.add.text(this.castleX, config.height-240, `궁수 x${this.stat.archer}`, 
+        this.archerText = this.add.text(this.castleX, config.height- this.groundHeight-200, `궁수 x${this.stat.archer}`, 
                 {   fontSize: '24px', 
                     fill: '#2ecc71',
                     padding: { x: 3, y: 3 },
@@ -138,7 +148,7 @@ class GameScene extends Phaser.Scene {
 
         //성당 고문실
 
-        this.cathedral = this.add.sprite(this.castleX-50, config.height-140, 'cathedral').setDisplaySize(128,128); 
+        this.cathedral = this.add.sprite(this.castleX-50, config.height- this.groundHeight-60, 'cathedral').setDisplaySize(128,128); 
         
         this.cathedral.setDepth(5);
         this.cathedral.setVisible(false);
@@ -192,11 +202,10 @@ class GameScene extends Phaser.Scene {
         
     }
     drawCastleImage(){
-        this.castle = this.add.image(this.castleX, config.height-150, 'castle1').setDisplaySize(144,144);
+        this.castle = this.add.image(this.castleX, config.height- this.groundHeight-70, 'castle1').setDisplaySize(144,144);
         this.castle.setDepth(3);
     }
     setBgImage(name, isDark =false){
-        
         this.bg = this.add.image(config.width/2, config.height/2, `${name}${isDark?'_dark':''}`).setDisplaySize(config.width, config.height);
         this.bg.setDepth(0);
     }
@@ -211,6 +220,7 @@ class GameScene extends Phaser.Scene {
     startCathedralConvertion(target){
         if(!this.getUpgradeItem('cathedral','conversion').unlock) return; // 개종이 해금되지 않았다면 실행하지 않음
         if(this.cathedralTimer) return; // 이미 진행 중이라면 중복 실행 방지
+        
         this.updateScore(target.score);
         target.destroy();
 
@@ -264,29 +274,8 @@ class GameScene extends Phaser.Scene {
         };
         this.stat.unitPer = 0; // 유닛 제거 확률 초기화
 
-        if(this.wave.value>0){
-            this.addSpawnTimer({mobNumber:1},1800);
-        }
-        if(this.wave.value>=2){
-            this.addSpawnTimer({mobNumber:2},2000);
-        }
-        if(this.wave.value>=4){
-            this.addSpawnTimer({mobNumber:1},1600);
-        }
-
-        if(this.wave.value>=6 && this.wave.value<10){
-            this.addSpawnTimer({mobNumber:3},2200);
-        }
-        if(this.wave.value>=10){
-            this.addSpawnTimer({mobNumber:3},2200 , 2);
-            
-        }
-        if(this.wave.value>=11 && this.wave.value<12){
-            this.addSpawnTimer({mobNumber:10, isDragable:false , hp:3},6800);
-        }
-        if(this.wave.value>=12){
-            this.addSpawnTimer({mobNumber:10, isDragable:false },6400);
-        }
+        //스폰타이머
+        this.addSpawnTimers();
         //성당 고문실
         this.setCathedral();
 
@@ -302,49 +291,7 @@ class GameScene extends Phaser.Scene {
                 delay:  this.stat.archerCool ,
                 callback: ()=>{
 
-                    let archerNumber = this.stat.archer;
-                    const mobArray = this.mobs.getMatching('isDragging',false);
-                    //console.log(`드래그되지 않은 몹 수 :${mobArray.length}`);
-                    if(mobArray.length<=0){
-                        return;
-                    }
-                    this.time.delayedCall(100, () => {
-                         this.archer.anims.play('archer_fire', true);
-                    });
-                    const arrowNum = archerNumber> 10 ? 10 : archerNumber;
-                    /*
-                    let arrowNum = archerNumber> mobArray.length? mobArray.length : archerNumber;
-                    arrowNum = arrowNum>10? 10 : arrowNum; // 최대 5발로 제한
-                    */
-                    for(let i =0; i< arrowNum ; i++){
-                        const artarget = Phaser.Utils.Array.GetRandom(mobArray);
-                        this.fireArrow(this.archer.x, this.archer.y, artarget.x ,  artarget.y);
-                    }
-                    //화살 도착 딜레이
-                    this.time.delayedCall(1150, () => { 
-                        const mobArray = this.mobs.getMatching('isThrown',false);
-                        for(let i =0; i< archerNumber ; i++){
-                            const target = Phaser.Utils.Array.GetRandom(mobArray);
-                            if(target==null){
-                                continue;
-                            }else{
-                                const range = Phaser.Math.Clamp(  (config.width - target.x)/(config.width-300) + 0.2 , 0, 2);
-                                const rng = Phaser.Math.FloatBetween(0, range) ;
-                                if(target){ 
-                                    
-                                    if(target.hp < rng ){
-                                        //화살 피격
-                                        this.fadeOutAndDestroy(this, target);
-                                    }else{
-                                        target.hp -= rng;
-                                        //console.log(`${Math.ceil( target.hp)}, ${Math.ceil(range*100)/100 }`);
-                                    }
-                                    this.mobDamageEffect(target, rng);
-                                    
-                                }
-                            }
-                        }
-                    });
+                    this.archerFire(null);
                 },
                 callbackScope: this,
                 loop:true
@@ -380,6 +327,15 @@ class GameScene extends Phaser.Scene {
         } else{
             mob.setInteractive({ draggable: true });  
         }
+
+        mob.setInteractive({ useHandCursor: true });
+        // 💡 몹을 클릭했을 때 실행할 이벤트 리스너 등록
+        mob.on('pointerdown', (pointer) => {
+            // 일반 클릭과 구별하기 위해 브라우저 기본 간섭 방지
+            if (pointer.event) pointer.event.preventDefault();
+            // 🎯 스킬 및 공격 판단 함수 호출 (아래 2단계에서 구현)
+            this.handleMobClick(mob);
+        });
         
         // 1. 바닥과의 마찰력을 0으로 설정
         mob.setFriction(0);
@@ -937,6 +893,223 @@ class GameScene extends Phaser.Scene {
         }, null, this);
         
     }
+    // src/scenes/GameScene.js 내부에 추가
+
+    /**
+     * 💡 하늘로 솟구치는 미니멀 빛줄기 이펙트
+     * @param {number} x - 이펙트가 생성될 X 좌표
+     * @param {number} y - 이펙트가 생성될 Y 좌표 (보통 몹의 위치나 바닥)
+     * @param {number} duration - 빛줄기가 유지될 시간 (밀리초, 예: 1000 = 1초)
+     * @param {number} color - 빛줄기 고유 색상 (예: 황금색 0xffcc00, 보라색 0x8844ff)
+     * @param {number} width - 빛줄기의 두께 (기본값 20픽셀)
+     */
+    createBeamEffect(x, y, duration = 1000, color = 0xffcc00, maxWidth = 20) {
+        const beam = this.add.graphics();
+        beam.setDepth(30); // 화면 맨 앞으로 배치
+
+        const beamHeight = y; 
+        
+        // 💡 애니메이션 상태를 관리할 객체
+        const effectState = {
+            width: maxWidth,
+            alpha: 0,
+            timeCounter: 0 // 🌊 삼각함수(Sin) 주기를 계산하기 위한 타임 카운터
+        };
+
+        // 🎨 출렁이는 빛줄기를 실시간으로 그리는 헬퍼 함수
+        const drawBeam = () => {
+            beam.clear();
+            if (effectState.width <= 0) return;
+
+            // 🌊 [핵심 연산] Math.sin을 이용해 매 프레임 두께를 미세하게 변동시킵니다.
+            // timeCounter에 곱하는 숫자가 커질수록 출렁이는 속도가 빨라집니다.
+            const wave = Math.sin(effectState.timeCounter * 0.05); 
+            
+            // 평소 두께의 85% ~ 115% 사이를 출렁거리게 만듭니다. (최대 두께 반영)
+            const currentWidth = effectState.width * (1 + wave * 0.15);
+
+            // [레이어 A] 외곽 반투명 컬러 빛
+            beam.fillStyle(color, effectState.alpha * 0.4);
+            beam.fillRect(x - currentWidth / 2, 0, currentWidth, beamHeight);
+
+            // [레이어 B] 중심부 핵심 코어 빛 (코어도 비율에 맞춰 함께 출렁임)
+            const coreWidth = currentWidth * 0.4;
+            beam.fillStyle(0xffffff, effectState.alpha * 0.9);
+            beam.fillRect(x - coreWidth / 2, 0, coreWidth, beamHeight);
+        };
+
+        // 1. ⚡ 최초 페이드 인 (0.15초 동안 빠르게 켜짐)
+        this.tweens.add({
+            targets: effectState,
+            alpha: 1,
+            duration: 150,
+            ease: 'Quad.easeOut',
+            onUpdate: (tween, target) => {
+                target.timeCounter++; // 타임 카운터를 누적하여 파동을 만듦
+                drawBeam();
+            },
+            onComplete: () => {
+                
+                // 2. ⏳ 유지 단계 트윈 (유지하는 동안에도 출렁임이 멈추지 않도록 이 단계 전용 트윈을 겁니다)
+                const activeDuration = duration - 350; // 전체 시간에서 앞뒤 페이드 시간을 제외
+                
+                const holdTween = this.tweens.add({
+                    targets: effectState,
+                    timeCounter: effectState.timeCounter + (activeDuration / 16), // 시간 흐름 비례 카운터 증가
+                    duration: activeDuration,
+                    onUpdate: drawBeam, // 매 업데이트마다 출렁이며 그리기
+                    onComplete: () => {
+                        
+                        // 3. 📉 소멸 단계: 중심을 향해 얇아지며 증발
+                        this.tweens.add({
+                            targets: effectState,
+                            alpha: 0,
+                            width: 0, // 기본 두께 자체를 0으로 줄임
+                            duration: 200,
+                            ease: 'Quad.easeIn',
+                            onUpdate: (tween, target) => {
+                                target.timeCounter += 2; // 사라질 때는 더 빠르게 출렁이게 카운터 가속
+                                drawBeam();
+                            },
+                            onComplete: () => {
+                                beam.destroy(); // 메모리 해제
+                            }
+                        });
+                        
+                    }
+                });
+                
+            }
+        });
+    }
+
+    archerFire(targeting =null){
+        let delayCallTime = 1100;
+        let archerNumber = this.stat.archer;
+        const mobArray = this.mobs.getMatching('isDragging',false);
+        //console.log(`드래그되지 않은 몹 수 :${mobArray.length}`); isDragging ??? 
+        if(mobArray.length<=0 && targeting ==null){
+            return;
+        }
+        this.time.delayedCall(100, () => {
+            this.archer.anims.play('archer_fire', true);
+        });
+        const arrowNum = archerNumber> 10 ? 10 : archerNumber;
+        /*
+        let arrowNum = archerNumber> mobArray.length? mobArray.length : archerNumber;
+        arrowNum = arrowNum>10? 10 : arrowNum; // 최대 5발로 제한
+        */
+        for(let i =0; i< arrowNum ; i++){
+            const artarget = targeting!=null? targeting :  Phaser.Utils.Array.GetRandom(mobArray);
+            this.fireArrow(this.archer.x, this.archer.y, artarget.x ,  artarget.y);
+        }
+        //화살 도착 딜레이
+        this.time.delayedCall(delayCallTime, () => { 
+            const mobArray = this.mobs.getMatching('isDragging',false);
+            for(let i =0; i< archerNumber ; i++){
+                const target = targeting!=null? targeting :  Phaser.Utils.Array.GetRandom(mobArray);
+                if(target==null){
+                    continue;
+                }else{
+                    const range = Phaser.Math.Clamp(  (config.width - target.x)/(config.width-300) + 0.2 , 0, 2);
+                    const rng = Phaser.Math.FloatBetween(0, range) ;
+                    if(target){ 
+                        
+                        if(target.hp < rng ){
+                            //화살 피격
+                            this.fadeOutAndDestroy(this, target);
+                        }else{
+                            target.hp -= rng;
+                            //console.log(`${Math.ceil( target.hp)}, ${Math.ceil(range*100)/100 }`);
+                        }
+                        this.mobDamageEffect(target, rng);
+                        
+                    }
+                }
+            }
+        });
+    }
+    //스킬사용
+        /**
+     * 몹을 직접 클릭했을 때 실행되는 액션 마스터 함수
+     * @param {Phaser.GameObjects.Sprite} mob - 클릭당한 몹 객체
+     */
+    handleMobClick(mob) {
+        // 1. UI 씬을 가져와서 현재 토글(장전)된 스킬이 있는지 확인합니다.
+        const uiScene = this.scene.get('UIScene');
+        const activeSkill = uiScene.activeSkillTag; 
+
+        // 2. 만약 장전된 스킬이 있다면?
+        if (activeSkill) {
+            // 스킬 데이터 찾기
+            const skill = uiScene.skills.find(s => s.tag === activeSkill);
+            
+            // 마나(MP) 시스템이 있다면 체크 (예시)
+            // if (this.player.mp < skill.mp) { console.log("MP가 부족합니다!"); return; }
+
+            // 💥 [스킬 1] 조준 사격 (AimShot) 발동
+            if (activeSkill === 'aimShot') {
+                console.log(`🏹 ${skill.name} 발동! ${mob.key}에게 집중사격!`);
+                this.archerFire( mob);
+                mob.body.setVelocity(0,0);
+                //mob.currentHp -= 300; // 일반 공격보다 강력한 데미지
+                //this.showDamageText(mob, 300); // 데미지 팝업 연출 (선택)
+            } 
+            // 💥 [스킬 2] 저주 (Curse) 발동
+            else if (activeSkill === 'curse') {
+                console.log(`💀 ${skill.name} 발동! ${mob.key}가 즉시 사망합니다`);
+                this.fadeOutAndDestroy(this, mob);
+                this.createBeamEffect(mob.x, mob.y+40, 400, 0x9933ff, 40);
+            }
+            else if (activeSkill === 'conversion') {
+                console.log(`👥 ${skill.name} 발동! ${mob.key}가 개종됩니다.`);
+                this.updateScore(mob.score);
+                mob.destroy();
+                this.converstionComplete();
+                this.createBeamEffect(mob.x, mob.y+40, 1200 , '0xffcc00', 50);
+            }
+            // 3. ⏱️ 스킬을 성공적으로 썼으므로 쿨타임을 적용합니다.
+            skill.cooltime = skill.maxCooltime;
+
+            // 4. 📴 스킬을 사용했으니 장전 상태(토글)를 해제하여 평소 상태로 돌립니다.
+            uiScene.deactivateAllSkills();
+
+        } 
+        // 3. 장전된 스킬이 없다면 (activeSkill === null)
+        else {
+            
+            
+        }
+    }
+    //스폰타이머
+    addSpawnTimers(){
+        //레벨 디자인 
+        if(this.wave.value>0){
+            this.addSpawnTimer({mobNumber:1},1800);
+        }
+        if(this.wave.value>=2){
+            this.addSpawnTimer({mobNumber:2},2000);
+        }
+        if(this.wave.value>=4&& this.wave.value<6){
+            this.addSpawnTimer({mobNumber:1},1600);
+        }
+        if(this.wave.value>8){
+            this.addSpawnTimer({mobNumber:1},2200);
+        }
+        if(this.wave.value>=6 && this.wave.value<10){
+            this.addSpawnTimer({mobNumber:3},2200);
+        }
+        if(this.wave.value>=10){
+            this.addSpawnTimer({mobNumber:3},2200 , 2);
+            
+        }
+        if(this.wave.value>=11 && this.wave.value<12){
+            this.addSpawnTimer({mobNumber:10, isDragable:false , hp:3},6800);
+        }
+        if(this.wave.value>=12){
+            this.addSpawnTimer({mobNumber:10, isDragable:false },6400);
+        }
+    }
     // GameScene 내부의 gameOver 함수
     gameOver() {
         this.isGameOver = true;
@@ -977,6 +1150,10 @@ class GameScene extends Phaser.Scene {
             const data = JSON.parse(savedData);
 
             // 3. 게임 내부 변수들에 데이터를 덮어씌웁니다.
+            if(data.stat.mp ==null) data.stat.mp = 0;
+            if(data.stat.maxMp ==null) data.stat.maxMp = 0;
+            if(data.stat.officer ==null) data.stat.officer = 0;
+
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
             this.wave = data.wave || this.wave;
             this.gold = data.gold || this.gold;

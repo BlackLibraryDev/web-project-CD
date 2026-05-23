@@ -49,7 +49,7 @@ class MainMenuScene extends Phaser.Scene {
         this.castle = this.add.image(width *0.7, height -200, 'castle1').setScale(1.5);
 
         const platforms = this.physics.add.staticGroup(); 
-        this.ground = this.add.rectangle(width / 2, height-50, width, 100, 0xffffff,0.2).setOrigin(0.5);
+        this.ground = this.add.rectangle(width / 2, height-50, width, 100, 0xffffff,0).setOrigin(0.5);
         platforms.add(this.ground); // 이제 .add()가 작동합니다.
         this.mobs = this.physics.add.group();
         //0.5초마다 몹이 생성됨
@@ -108,27 +108,23 @@ class MainMenuScene extends Phaser.Scene {
         // 클릭 시 인게임(GameScene)으로 전환
         startButton.on('pointerdown', () => {
             this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
-
             this.scene.start('GameScene');
         });
         // 클릭 시 인게임(GameScene)으로 전환
-        newGameButton.on('pointerdown', () => {
-            
-            
-            if (savedData) {
-                if (confirm('저장된 데이터가 있습니다. 새로 시작하시겠습니까?')) {
-                    this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
-                    localStorage.removeItem('projectCD_data'); // 기존 데이터 삭제
-                    this.scene.start('GameScene');
-                } else {
-                    
-                }
-            } else {
-                this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
-                localStorage.removeItem('projectCD_data'); // 기존 데이터 삭제
-                this.scene.start('GameScene');
-            }
-            
+         newGameButton.on('pointerdown', (pointer) => {
+
+             if (savedData) {
+                if (pointer && pointer.event) pointer.event.preventDefault();
+                // 💡 함수를 호출하면서 문구와 실행할 로직을 던져줍니다.
+                this.showConfirmPopup(
+                    '저장된 데이터가 있습니다. \n새로 시작하시겠습니까?', 
+                    () => {
+                        this.newGameStart();
+                    }
+                );
+             }else{
+                 this.newGameStart();
+             }
         });
 
 
@@ -176,6 +172,74 @@ class MainMenuScene extends Phaser.Scene {
             duration: 500,
             ease: 'Cubic.easeOut',
             onComplete: () => blood.destroy()
+        });
+    }
+    newGameStart(){
+        this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
+        localStorage.removeItem('projectCD_data'); // 기존 데이터 삭제
+        this.scene.start('GameScene');
+    }
+     /**
+     * 💡 언제든 재활용할 수 있는 미니멀 확인 팝업창
+     * @param {string} message - 팝업창에 표시할 안내 문구
+     * @param {function} onConfirm - [ YES ]를 눌렀을 때 실행할 함수
+     */
+    showConfirmPopup(message, onConfirm) {
+        // 1. 이미 팝업이 떠 있다면 중복 생성 방지
+        if (this.confirmPopup) return;
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // 2. 팝업 컨테이너 생성
+        this.confirmPopup = this.add.container(0, 0);
+        this.confirmPopup.setDepth(50);
+
+        // 3. 뒷배경 클릭 방지용 오버레이
+        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
+        overlay.setInteractive();
+        
+        const box = this.add.rectangle(width / 2, height / 2,  420,200, 0x000000, 1).setStrokeStyle(2, 0xffffff);
+        // 4. 타이포그래피 스타일
+        const textStyle = {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '28px',
+            fill: '#ffffff',
+            stroke: '#111111',
+            strokeThickness: 5,
+            align: 'center'
+        };
+
+        // 전달받은 message로 텍스트 생성
+        const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
+
+        // 버튼 생성
+        const yesButton = this.add.text(width / 2 - 80, height * 0.58, '[ YES ]', { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
+            .setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const noButton = this.add.text(width / 2 + 80, height * 0.58, '[ NO ]', { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
+            .setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        this.confirmPopup.add([overlay, box, titleText, yesButton, noButton]);
+
+        // 호버 효과
+        yesButton.on('pointerover', () => yesButton.setScale(1.1));
+        yesButton.on('pointerout', () => yesButton.setScale(1.0));
+        noButton.on('pointerover', () => noButton.setScale(1.1));
+        noButton.on('pointerout', () => noButton.setScale(1.0));
+
+        // 🟢 YES 클릭 시
+        yesButton.on('pointerdown', () => {
+            if (onConfirm) onConfirm(); // 💡 전달받은 핵심 기능을 여기서 실행!
+            
+            this.confirmPopup.destroy();
+            this.confirmPopup = null;
+        });
+
+        // 🔴 NO 클릭 시
+        noButton.on('pointerdown', () => {
+            this.confirmPopup.destroy();
+            this.confirmPopup = null;
         });
     }
 }
