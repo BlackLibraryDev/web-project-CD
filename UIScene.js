@@ -101,12 +101,24 @@ class UIScene extends Phaser.Scene {
             fontStyle: 'bold',
             stroke: '#000000',
             strokeThickness: 3
-        }).setOrigin(0.5, 0); // 기준점을 중앙 상단으로 설정
-        this.waveText.setDepth(18);
+        }).setOrigin(0.5, 0).setDepth(18);
         
         this.waveBar = this.add.graphics();
         this.waveBar.setDepth(8);
         this.drawWaveBar(this.waveBar);
+
+        
+        this.manaTxt = this.add.text(config.width /2, config.height-140,``,{
+            fontSize: '24px',
+            fill:'#3498db ',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5, 0).setDepth(10);
+        this.manaBar = this.add.graphics();
+        this.manaBar.setDepth(9);
+        this.drawManaBar(this.manaBar);
+
 
         // 일시정지 버튼 생성 (텍스트 형태)
         this.pauseBtn = this.add.text(20, 20, '⏸', {
@@ -276,6 +288,59 @@ class UIScene extends Phaser.Scene {
         graphics.fillRect(width/2 -100 , 65, 200 * timeRatio, 10);
         this.waveText.setText(`Wave ${this.wave.value || 1}`);
     }
+    drawManaBar(graphics){
+        const {width, height} = this.cameras.main;
+        const barWidth = 100 +  (this.stat.maxMp >300? 300 : this.stat.maxMp ); 
+        graphics.clear();
+        graphics.fillStyle(0x222222);
+        graphics.fillRect( width/2 -barWidth/2 ,height-120 , barWidth, 16);
+
+        graphics.fillStyle( 0x3498db );
+        const timeRatio = Phaser.Math.Clamp(this.stat.mp/ this.stat.maxMp, 0, 1);
+        graphics.fillRect(width/2 -barWidth/2 ,height-120 , barWidth * timeRatio, 16);
+
+        this.manaTxt.setText(`${ Math.floor(this.stat.mp)}/${this.stat.maxMp}`);
+
+    }
+    shakeMpBar(){
+        // 1. 쉐이크 효과를 적용할 그래픽스 객체
+        if(this.manabarshakeTween && this.manabarshakeTween.isActive()){
+            return;
+        }
+        const graphics = this.manaBar;
+        const originalX = graphics.x;
+        const originalY = graphics.y;
+
+        // 흔들림 강도 (픽셀 단위)
+        const shakeIntensity = 8;
+        
+
+        this.manabarshakeTween = this.tweens.add({
+            targets: graphics,
+            // 최초 목적지를 랜덤하게 잡습니다.
+            x: originalX + Phaser.Math.Between(-shakeIntensity, shakeIntensity),
+            y: originalY + Phaser.Math.Between(-shakeIntensity, shakeIntensity),
+            duration: 40, // 💡 지진 느낌을 주려면 0.04초 정도로 아주 빠르게 꺾여야 합니다.
+            yoyo: true,
+            repeat: -1,
+            ease: 'Linear', // 지진은 부드러운 곡선(Sine)보다 직선(Linear)이 훨씬 타격감 있습니다.
+            
+            // 🔄 [핵심] 한 번 왕복(Yoyo)할 때마다 다음 흔들릴 목적지를 상하좌우 무작위로 새로 고칩니다.
+            onYoyo: () => {
+                this.manabarshakeTween .updateTo('x', originalX + Phaser.Math.Between(-shakeIntensity, shakeIntensity));
+                this.manabarshakeTween .updateTo('y', originalY + Phaser.Math.Between(-shakeIntensity, shakeIntensity));
+            }
+        });
+
+        // 3. 1초 뒤 흔들림 멈춤 (지연 호출 사용)
+        this.time.delayedCall(300, () => {
+            this.manabarshakeTween.stop(); // 쉐이크 애니메이션 멈춤
+            this.manabarshakeTween = null;
+            // 그래픽스 객체 위치 초기화 (선택 사항)
+            graphics.x = originalX;
+            graphics.y = originalY;
+        });
+    }
     drawHealthBar(graphics, x=90, y =50) {
         graphics.clear();
         if(this.upgradeWindow.visible){
@@ -354,9 +419,9 @@ class UIScene extends Phaser.Scene {
 
         this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
         this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
-        this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#3498db'); // 파란색 계열
+        this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#9b59b6'); // 파란색 계열
         this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
-        this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#9b59b6'); // 보라색 계열
+        this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#3498db'); // 보라색 계열
         //this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost})`).setColor('#2ecc71'); // 초록색 계열
         //this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost})`).setColor('#9b59b6'); // 보라색 계열
         
@@ -779,8 +844,8 @@ class UIScene extends Phaser.Scene {
         // 1. 데이터 베이스 참조 (스킬 리스트)
         this.skills = [
             { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock: true, mp: 0 }, 
-            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 20 },
-            { tag: 'conversion', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: true, mp: 80 }
+            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 10 },
+            { tag: 'conversion', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: true, mp: 50 }
         ];
 
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
@@ -905,7 +970,23 @@ class UIScene extends Phaser.Scene {
             }
             this.drawWaveBar(this.waveBar)
         }
+        
+        if(this.stat.witch>0){
+            this.manaBar.setVisible(true);
+            this.manaTxt.setVisible(true);
+            this.stat.maxMp = this.stat.witch*10;
+            if(this.stat.mp < this.stat.maxMp){
+                this.stat.mp += delta * this.stat.witch*0.001;
+                if(this.stat.mp>this.stat.maxMp) this.stat.mp = this.stat.maxMp;
+                //마나 창
+                this.drawManaBar( this.manaBar);
 
+            }
+        }else{
+            this.manaBar.setVisible(false);
+            this.manaTxt.setVisible(false);
+        }
+       
        
         if (!this.skills || !this.skillUIComponents) return;
          // 첫 번째 스킬 상자가 숨겨져 있는지 체크하는 안전장치

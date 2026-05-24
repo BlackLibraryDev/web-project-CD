@@ -51,7 +51,7 @@ class GameScene extends Phaser.Scene {
             archerCost:4, 
             archerCool:1800,   
             witch:0, 
-            witchCost:10,
+            witchCost:7,
             officer:0
 
         };
@@ -66,12 +66,12 @@ class GameScene extends Phaser.Scene {
             
             
             'barracks': [
-                { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:'👥인력으로 궁병을 고용합니다. 일정시간마다 활을 쏘아 적을 쓰러트립니다.'},
+                { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:`👥인력으로 궁병을 고용합니다(💸-${this.stat.archerCost}) 일정시간마다 화살을 쏩니다.`},
                 { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 30, info:'궁병이 더 빨리 화살을 쏩니다'}
                 //{ tag:'archerRange', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
             ],
             'magichall': [
-                //{ tag:'witch', name: '🪄마법사 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 12, manPower:1, info:'마법사를 고용합니다'},
+                { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`}
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
@@ -642,6 +642,10 @@ class GameScene extends Phaser.Scene {
                 this.stat.archerCool -= item.value;
                 
             break;
+
+            case 'witch':
+                this.stat.witch++;
+            break;
             // 다른 태그에 대한 효과도 여기에 추가 가능
         }   
 
@@ -682,13 +686,13 @@ class GameScene extends Phaser.Scene {
             //console.log( ` ${this.stat.unitPer>removeCount? '유닛제거 - ':''}${Math.floor(this.stat.unitPer*100)/100} : ${removeCount}`)
             if(this.stat.unitPer - this.stat.armor*0.04  >removeCount ){
                 this.stat.unitPer = 0; // 제거가 발생하면 확률 초기화
-                
+                const uiScene = this.scene.get('UIScene');
 
                 if(this.stat.archer > 0){   
                     this.stat.archer --; // 궁병 제거
                     this.data.archerDeath++; 
                     if(this.stat.archer < 0) this.stat.archer = 0; // 음수 방지
-                    this.registry.set('stat', this.stat);
+                    
                     this.archerText.setText(`🏹 x${this.stat.archer}`);
                     if(this.stat.archer <= 0){
                         this.archer.setVisible(false);
@@ -696,29 +700,35 @@ class GameScene extends Phaser.Scene {
                         this.archeryTimer?.remove();
                         this.archeryTimer = null;
                     }
-                    
-                }
-                //마법사 제거 로직도 여기에 추가 가능
-                //글자 확대효과
-                //if (this.castleShakeTween && this.castleShakeTween.isActive()) {
-                if(this.archerTextEffect && this.archerTextEffect.isActive() ){
-                    this.archerTextEffect.remove();
-                }
-                this.archerText.setColor('#ff0000');
-                this.archerTextEffect = this.tweens.add({
-                    targets: this.archerText,
-                    scale: 1.5, 
-                    duration: 200,
-                    yoyo: true,
-                    
-                    ease: 'Cubic.easeOut',
-                    onComplete: () => {
-                        this.archerText.setColor('#2ecc71');
-                        this.archerText.setScale(1); // 원래 크기로 복귀
-                        this.archerText.clearTint();
-                        this.archerTextEffect = null; // 트윈이 끝난 후 null 처리
+                    //아처 글자 커지는 효과
+                    if(this.archerTextEffect && this.archerTextEffect.isActive() ){
+                        this.archerTextEffect.remove();
                     }
-                });
+                    this.archerText.setColor('#ff0000');
+                    this.archerTextEffect = this.tweens.add({
+                        targets: this.archerText,
+                        scale: 1.5, 
+                        duration: 200,
+                        yoyo: true,
+                        
+                        ease: 'Cubic.easeOut',
+                        onComplete: () => {
+                            this.archerText.setColor('#2ecc71');
+                            this.archerText.setScale(1); // 원래 크기로 복귀
+                            this.archerText.clearTint();
+                            this.archerTextEffect = null; // 트윈이 끝난 후 null 처리
+                        }
+                    });
+                }
+
+                //마법사 제거 로직도 여기에 추가 가능
+                if(this.stat.witch>0){
+                    this.stat.witch--;
+                    this.data.witchDeath++;
+                    if(this.stat.witch<0) this.stat.witch=0;//음수방지
+                    uiScene.shakeMpBar();
+                }
+                this.registry.set('stat', this.stat);
             }
         }
         
@@ -757,6 +767,7 @@ class GameScene extends Phaser.Scene {
     }
     fadeOutAndDestroy = (scene, target) => {
         // 1. 물리 엔진 비활성화 (사라지는 동안 충돌하거나 움직이지 않게 함)
+        target.hp =0;
         if(target.body){
             target.body.enable = false;
             target.anims.stop(); // 애니메이션도 멈춤
@@ -795,7 +806,6 @@ class GameScene extends Phaser.Scene {
             onComplete: () => mob.clearTint()
         });
     }
-
     mobBloodEffect(mob){
         const blood = this.add.ellipse(mob.x, mob.y+mob.height/3, 60,20, 0xff0000).setAlpha(0.8);
         this.tweens.add({
@@ -1036,6 +1046,7 @@ class GameScene extends Phaser.Scene {
      */
     handleMobClick(mob) {
         // 1. UI 씬을 가져와서 현재 토글(장전)된 스킬이 있는지 확인합니다.
+        if(mob.hp<=0) return;
         const uiScene = this.scene.get('UIScene');
         const activeSkill = uiScene.activeSkillTag; 
 
@@ -1045,7 +1056,8 @@ class GameScene extends Phaser.Scene {
             const skill = uiScene.skills.find(s => s.tag === activeSkill);
             
             // 마나(MP) 시스템이 있다면 체크 (예시)
-            // if (this.player.mp < skill.mp) { console.log("MP가 부족합니다!"); return; }
+            if (this.stat.mp < skill.mp) { uiScene.shakeMpBar(); console.log("MP가 부족합니다!"); return; }
+            this.stat.mp -= skill.mp;
 
             // 💥 [스킬 1] 조준 사격 (AimShot) 발동
             if (activeSkill === 'aimShot') {
@@ -1059,14 +1071,15 @@ class GameScene extends Phaser.Scene {
             else if (activeSkill === 'curse') {
                 console.log(`💀 ${skill.name} 발동! ${mob.key}가 즉시 사망합니다`);
                 this.fadeOutAndDestroy(this, mob);
-                this.createBeamEffect(mob.x, mob.y+40, 400, 0x9933ff, 40);
+                this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
             }
             else if (activeSkill === 'conversion') {
                 console.log(`👥 ${skill.name} 발동! ${mob.key}가 개종됩니다.`);
                 this.updateScore(mob.score);
                 mob.destroy();
-                this.converstionComplete();
-                this.createBeamEffect(mob.x, mob.y+40, 1200 , '0xffcc00', 50);
+                this.data.earnManpower ++;
+                this.stat.manPower++;
+                this.createBeamEffect(mob.x, config.height-this.groundHeight , 1200 , '0xffcc00', 50);
             }
             // 3. ⏱️ 스킬을 성공적으로 썼으므로 쿨타임을 적용합니다.
             skill.cooltime = skill.maxCooltime;
@@ -1153,6 +1166,8 @@ class GameScene extends Phaser.Scene {
             if(data.stat.mp ==null) data.stat.mp = 0;
             if(data.stat.maxMp ==null) data.stat.maxMp = 0;
             if(data.stat.officer ==null) data.stat.officer = 0;
+            data.stat.witchCost = this.stat.witchCost;
+            data.stat.archerCost = this.stat.archerCost;
 
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
             this.wave = data.wave || this.wave;
@@ -1160,17 +1175,23 @@ class GameScene extends Phaser.Scene {
             this.score = data.score || this.score;
             
             
-            const categories = Object.keys(data.upgrades);
+            const categories = Object.keys(this.upgrades);
             categories.forEach((name) => {
                 const arr = data.upgrades[name];
                 const org = this.upgrades[name];
                 if(arr ==null){
                     
                 }else{
-                     for(let i =0 ;i < arr.length ; i++){
-                    arr[i].info = org[i].info;
-                    arr[i].name = org[i].name;
-                }
+                     for(let i =0 ;i < org.length ; i++){
+                        if(arr[i] ==null){
+                            //업글이 없으면 추가
+                            arr[i] = org[i];
+                        }else{
+                            arr[i].info = org[i].info;
+                            arr[i].name = org[i].name;
+                        }
+                    
+                    }
                 }
                
             });
