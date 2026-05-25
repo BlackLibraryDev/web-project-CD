@@ -51,7 +51,7 @@ class GameScene extends Phaser.Scene {
             archerCost:4, 
             archerCool:1800,   
             witch:0, 
-            witchCost:7,
+            witchCost:8,
             officer:0
 
         };
@@ -125,8 +125,7 @@ class GameScene extends Phaser.Scene {
             if( this.cathedralTimer==null && mob.x < this.castleX + 50){   
                 //성당 개종 발동 조건: 개종이 해금되어 있고, 개종이 진행 중이지 않고, 몹이 성채 근처에 있을 때
                 this.startCathedralConvertion(mob);
-                this.createBeamEffect(this.cathedral.x+30, this.cathedral.y+50, this.stat.convertionTime , '0xffcc00', 60);
-            }
+                }
         });
         //성채 이미지
         this.drawCastleImage();
@@ -220,7 +219,8 @@ class GameScene extends Phaser.Scene {
     startCathedralConvertion(target){
         if(!this.getUpgradeItem('cathedral','conversion').unlock) return; // 개종이 해금되지 않았다면 실행하지 않음
         if(this.cathedralTimer) return; // 이미 진행 중이라면 중복 실행 방지
-        
+
+        this.createBeamEffect(this.cathedral.x+30, this.cathedral.y+50, this.stat.convertionTime , '0xffcc00', 60);
         this.updateScore(target.score);
         target.destroy();
 

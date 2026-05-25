@@ -152,6 +152,7 @@ class UIScene extends Phaser.Scene {
             //this.upgradeWindow.setVisible(true);
             this.resultWindow.setVisible(true);
             this.showResultWindow(data);
+            this.data = data;
         });
         gameScene.events.on('showPause', () => {
             this.pauseMenu.setVisible(true);
@@ -270,6 +271,11 @@ class UIScene extends Phaser.Scene {
         this.setSkillUIVisibility(true);//스킬 모두 표시
         this.scene.get('GameScene').events.emit('startNextWave'); // GameScene에 다음 웨이브 시작 신호 보냄
         this.isPaused=false;
+        this.skills.forEach((skill, index) => {
+            if (!skill.unlock) return;
+            skill.cooltime =0;
+
+        });
     }
     updateScore(points) {
         this.scoreText.setText('Score: ' + points);
@@ -411,19 +417,19 @@ class UIScene extends Phaser.Scene {
         // 💡 실제 값만 업데이트 (컬러링 추가로 시각 효과 극대화)
         let upkeepCost = 0;
         if(this.stat.archer > 0){
-            upkeepCost += this.stat.archerCost*this.stat.archer; // 궁수 1명당 유지비 2골드
+            upkeepCost += this.stat.archerCost*this.stat.archer; // 궁수 1명당 유지비 골드
         }
         if(this.stat.witch > 0){
-            upkeepCost += this.stat.witchCost*this.stat.witch; // 마법사 1명당 유지비 3골드
+            upkeepCost += this.stat.witchCost*this.stat.witch; // 마법사 1명당 유지비 골드
         }   
 
         this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
         this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
         this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#9b59b6'); // 파란색 계열
-        this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
-        this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#3498db'); // 보라색 계열
-        //this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost})`).setColor('#2ecc71'); // 초록색 계열
-        //this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost})`).setColor('#9b59b6'); // 보라색 계열
+        //this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
+        //this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#3498db'); // 보라색 계열
+        this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost*this.stat.archer})`).setColor('#2ecc71'); // 초록색 계열
+        this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost*this.stat.witch})`).setColor('#3498db'); // 보라색 계열
         
         this.statTexts.armor.setDepth(22);
         this.statTexts.manPower.setDepth(22);
@@ -436,7 +442,7 @@ class UIScene extends Phaser.Scene {
         }
     }
 
-    showResultWindow( data ) {
+    showResultWindow( data , immeditely =1) {
         this.setSkillUIVisibility(false);
         this.nextStageBtn.setVisible(false); // 숫자가 올라가는 동안 버튼은 숨김
         // 1. 폰트 스타일 설정 (테두리를 주어 가독성 확보)
@@ -482,44 +488,43 @@ class UIScene extends Phaser.Scene {
         console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
 
         // 0.4초 뒤: 쓰러트린 적 표시
-        this.time.delayedCall(400, () => {
+        this.time.delayedCall(400 *immeditely, () => {
             txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
-        this.time.delayedCall(700, () => {
+        this.time.delayedCall(700 *immeditely, () => {
             txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         // 0.8초 뒤: 획득한 골드 표시
-        this.time.delayedCall(1200, () => {
+        this.time.delayedCall(1200 *immeditely, () => {
             txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
         });
 
         // 1.2초 뒤: 유지비 표시
-        this.time.delayedCall(1600, () => {
-            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} (${data.archer}x${data.archerCost}) G`).setColor('#ff4d4d');
+        this.time.delayedCall(1600 *immeditely, () => {
+            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
         });
-        this.time.delayedCall(2000, () => {
-            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} (${data.witch}x${data.witchCost}) G`).setColor('#ff4d4d');
+        this.time.delayedCall(2000 *immeditely, () => {
+            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
         });
         //게리슨 사망자 표시
-        this.time.delayedCall(2600, () =>{
+        this.time.delayedCall(2600 *immeditely, () =>{
             txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
         
         });
 
 
         // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
-        this.time.delayedCall(3200, () => {
+        this.time.delayedCall(3200 *immeditely, () => {
             // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
             const scoreCounter = { value: 0 };
-            
             this.tweens.add({
                 targets: scoreCounter,
                 value: data.earnGold - (data.archerCost*data.archer) - (data.witchCost*data.witch), // 최종 금액
-                duration: 1200, // 1200ms 동안 숫자가 드르륵 올라감
+                duration:  (immeditely>0? 1200: 100), // 1200ms 동안 숫자가 드르륵 올라감
                 ease: 'Power1',
                 onUpdate: () => {
                     txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
@@ -527,14 +532,74 @@ class UIScene extends Phaser.Scene {
                 },
                 onComplete: () => {
                     // 숫자가 다 올라갔을 때 글씨가 살짝 커졌다가 돌아오는 강조 이펙트
-                    this.nextStageBtn.setVisible(true); // 숫자가 올라가는 동안 버튼은 숨김
-                    this.tweens.add({
-                        targets: txtTotal,
-                        scale: 1.3,
-                        duration: 400,
-                        yoyo: true,
-                        ease: 'Quad.easeInOut'
-                    });
+                    if(scoreCounter.value<0){ //scoreCounter.value or this.gold
+                        //음수인 경우 적자계산
+                        this.time.delayedCall(500, () =>{
+                            this.garrisonLose ='archer';
+                                this.garrisonLoseEvent = this.time.addEvent({
+                                    delay: 300,
+                                    callback: () => {
+                                        //
+                                        if(this.garrisonLose=='archer'){
+                                            data.archerDeath++;
+                                            scoreCounter.value += data.archerCost;
+                                            this.gold += data.archerCost;
+                                            this.stat.archer --;
+
+                                            this.garrisonLose ='witch';
+
+                                        }else if(this.garrisonLose =='witch'){
+                                            data.witchDeath++;
+                                            scoreCounter.value += data.witchCost;
+                                            this.gold += data.witchCost;
+                                            this.stat.witch --;
+
+                                            this.garrisonLose = 'archer';
+                                        }
+
+                                        this.registry.set('gold', this.gold);
+            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
+            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
+            txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+            txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
+
+                                        if( scoreCounter.value >=0){ //this.gold
+                                            //다음스테이지
+                                            this.garrisonLoseEvent.remove();
+                                            this.nextStageBtn.setVisible(true); 
+                                            this.nextStagetTxt.setVisible(true);
+
+                                            this.tweens.add({
+                                                targets: txtTotal,
+                                                scale: 1.3,
+                                                duration: 400,
+                                                yoyo: true,
+                                                ease: 'Quad.easeInOut'
+                                            });
+                                        }
+                                        
+                                    },
+                                    loop: true
+                                });
+
+                        });
+
+                    }else{
+                        //다음 스테이지
+                         this.nextStageBtn.setVisible(true); 
+                        this.nextStagetTxt.setVisible(true);
+
+                        this.tweens.add({
+                            targets: txtTotal,
+                            scale: 1.3,
+                            duration: 400,
+                            yoyo: true,
+                            ease: 'Quad.easeInOut'
+                        });
+                    }
+
+                   
+
                 }
             });
         });
@@ -545,7 +610,7 @@ class UIScene extends Phaser.Scene {
         //스테이지 완료 후 정산 페이지
         const { width, height } = this.cameras.main;
         this.resultWindow = this.add.container(width / 2, height / 2).setVisible(false);
-        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9).setStrokeStyle(2, 0xffffff);
+        const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9);//.setStrokeStyle(2, 0xffffff);
         this.resultWindow.add(bg);
 
          // 점수 텍스트
@@ -554,22 +619,49 @@ class UIScene extends Phaser.Scene {
         
 
          // 다음 스테이지 버튼
-         this.nextStageBtn = this.add.text(0, 280, 'Continue', {
-             fontSize: '28px',
-             fill: '#ffffff',
-             backgroundColor: '#333333',
-             padding: { x: 30, y: 20 }
-         })
+        this.nextStageBtn = this.add.rectangle(0 , 280, 200,  60,  0x444444).setStrokeStyle(2, 0xffffff)
+                .setInteractive({ useHandCursor: true }).setOrigin(0.5);
+        this.nextStagetTxt = this.add.text(0 , 280, 'Continue', {
+            fontSize: '28px',
+            fill: '#ffffff',
+            padding: { x: 30, y: 20 }
+        })
+        .setOrigin(0.5);
+
+         /*
          .setOrigin(0.5)
          .setInteractive({ useHandCursor: true });
+         */
          this.nextStageBtn.on('pointerdown', () => {
-             this.resultWindow.setVisible(false);
-             this.upgradeWindow.setVisible(true);
-             this.saveButton.setText('💾저장하기');
-             this.drawHealthBar(this.healthBar, 60, 50 ); // 위치
+            if(this.gold<0){
+                //음수인 경우 게임진행 불가
+                /*
+                this.data.archerDeath++;
+                 this.data.earnGold += this.data.archerCost;
+                this.gold += this.data.archerCost;
+                this.stat.archer --;
+
+                this.data.witchDeath++;
+                this.data.earnGold += this.data.witchCost;
+                this.gold += this.data.witchCost;
+                this.stat.witch --;
+                this.registry.set('gold', this.gold);
+                this.showResultWindow( this.data, 0);//즉시갱신
+                */
+
+            }else{
+                 this.resultWindow.setVisible(false);
+                this.upgradeWindow.setVisible(true);
+                this.saveButton.setText('💾저장하기');
+                this.drawHealthBar(this.healthBar, 60, 50 ); // 위치
+            }
+            
          });
+
          this.nextStageBtn.setVisible(false); // 초기에는 숨김
-         this.resultWindow.add(this.nextStageBtn);
+         this.nextStagetTxt.setVisible(false);
+
+         this.resultWindow.add([this.nextStageBtn, this.nextStagetTxt ]);
 
 
          this.resultWindow.setDepth(30); // 다른 UI 요소들보다 위에 표시
@@ -844,13 +936,13 @@ class UIScene extends Phaser.Scene {
         // 1. 데이터 베이스 참조 (스킬 리스트)
         this.skills = [
             { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock: true, mp: 0 }, 
-            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 10 },
+            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 20 },
             { tag: 'conversion', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: true, mp: 50 }
         ];
 
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
         this.activeSkillTag = null; 
-        const spacing = 90; // 아이콘 간격
+        const spacing = 100; // 아이콘 간격
         const startX = width/2 - (this.skills.length/2)*spacing + spacing/2; // 스킬 바 시작 X 위치
         const startY = height-50;
 
@@ -869,7 +961,6 @@ class UIScene extends Phaser.Scene {
             baseBox.fillRect(x - size / 2, y - size / 2, size, size);
             baseBox.lineStyle(2, 0xaaaaaa, 1);
             baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
-
             
 
             // 3. 🍕 [핵심] 시계방향 피자 조각 모양을 연출할 마스크 그래픽스 생성
@@ -900,13 +991,15 @@ class UIScene extends Phaser.Scene {
             // 6. 모든 데이터를 바구니에 저장
             this.skillUIComponents[skill.tag] = {
                 baseBox: baseBox,
-                coolShadow: coolShadow,       // 쿨타임 검은 레이어
-                maskGraphics: maskGraphics,   // 부채꼴 마스크를 실시간으로 그릴 통로
+                coolShadow: coolShadow,
+                maskGraphics: maskGraphics,
                 text: labelText,
                 skillData: skill,
                 size: size,
                 startX: x,
-                startY: y
+                startY: y,
+                // 💡 [핵심 추가] 현재 UI의 시각적 상태를 기록해 둡니다. (기본값 'normal')
+                uiState: 'normal'
             };
 
             // 7. 클릭(토글) 이벤트
@@ -923,10 +1016,10 @@ class UIScene extends Phaser.Scene {
                     baseBox.clear();
                     baseBox.fillStyle(0x332a00, 1);
                     baseBox.fillRect(x - size / 2, y - size / 2, size, size);
-                    baseBox.lineStyle(4, 0xffcc00, 1);
+                    baseBox.lineStyle(4, 0x0076d7, 1);
                     baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
                     
-                    labelText.setFill('#ffcc00');
+                    labelText.setFill('#0076d7');
                     labelText.setScale(1.1);
                 }
             });
@@ -988,64 +1081,84 @@ class UIScene extends Phaser.Scene {
         }
        
        
-        if (!this.skills || !this.skillUIComponents) return;
-         // 첫 번째 스킬 상자가 숨겨져 있는지 체크하는 안전장치
-        
-        this.skills.forEach(skill => {
-            const comp = this.skillUIComponents[skill.tag];
-            if (!comp) return;
+        if (!this.skillUIComponents) return;
+    
+            const firstKey = Object.keys(this.skillUIComponents)[0];
+            if (firstKey && !this.skillUIComponents[firstKey].baseBox.visible) return;
 
-            if (skill.cooltime > 0) {
-                skill.cooltime -= delta;
+            const gameScene = this.scene.get('GameScene');
+            const currentMp = gameScene.stat ? gameScene.stat.mp : 0; 
 
-                const remainingSec = (skill.cooltime / 1000).toFixed(1);
-                comp.text.setText(`${remainingSec}s\nCOOL`);
-                comp.text.setFill('#ff4d4d');
-                comp.text.setScale(1.0);
+            this.skills.forEach(skill => {
+                const comp = this.skillUIComponents[skill.tag];
+                if (!comp) return;
 
-                // 💡 [수정] 이제 coolShadow 오브젝트를 실시간으로 갱신해 줍니다.
-                const progress = skill.cooltime / skill.maxCooltime; 
-                
-                comp.coolShadow.clear();
-                comp.coolShadow.fillStyle(0x000000, 0.6); // 60% 불투명 검은색
+                // 1️⃣ [쿨타임 상태]
+                if (skill.cooltime > 0) {
+                    skill.cooltime -= delta;
+                    comp.uiState = 'cooldown'; // 상태 변경
 
-                const startAngle = Phaser.Math.DegToRad(-90);
-                const endAngle = startAngle + Phaser.Math.DegToRad(360 * progress);
+                    const remainingSec = (skill.cooltime / 1000).toFixed(1);
+                    comp.text.setText(`${remainingSec}s\nCOOL`);
+                    comp.text.setFill('#ff4d4d');
 
-                // 🍕 반지름을 상자 크기보다 훨씬 크게(size * 1.5) 잡아서 부채꼴을 넉넉하게 그립니다.
-                // 어차피 1단계에서 세팅한 사각형 마스크가 바깥 경계선을 싹 다 칼로 자르듯 가려줍니다!
-                comp.coolShadow.slice(
-                    comp.startX, 
-                    comp.startY, 
-                    comp.size * 1.5, // 넉넉하게 큰 반지름
-                    startAngle, 
-                    endAngle, 
-                    false
-                );
-                comp.coolShadow.fillPath();
+                    const progress = skill.cooltime / skill.maxCooltime; 
+                    comp.coolShadow.clear();
+                    comp.coolShadow.fillStyle(0x000000, 0.6); 
 
-                // 외곽 테두리선 붉은색 유지
-                comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
-                comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    const startAngle = Phaser.Math.DegToRad(-90);
+                    const endAngle = startAngle + Phaser.Math.DegToRad(360 * progress);
 
-                if (this.activeSkillTag === skill.tag) {
-                    this.activeSkillTag = null;
+                    comp.coolShadow.slice(comp.startX, comp.startY, comp.size * 1.5, startAngle, endAngle, false);
+                    comp.coolShadow.fillPath();
+
+                    comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
+                    comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+
+                    if (this.activeSkillTag === skill.tag) {
+                        this.activeSkillTag = null;
+                    }
+                } 
+                // 2️⃣ [대기 상태] 쿨타임이 아닐 때
+                else {
+                    if (this.activeSkillTag === skill.tag) return;
+
+                    // ❌ [마나 부족] 
+                    if (currentMp < skill.mp) {
+                        // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
+                        if (comp.uiState === 'low-mp') return;
+                        
+                        comp.uiState = 'low-mp'; // 상태 확정
+                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                        
+                        comp.baseBox.clear();
+                        comp.baseBox.fillStyle(0x111111, 1); // 어두운 흑색 바탕
+                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                        comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
+                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+
+                        comp.text.setFill('#555555');
+                    } 
+                    // ⭕ [사용 가능] 마나가 충분할 때
+                    else {
+                        // 💡 이미 원래 상태('normal')라면 연산을 생략하여 최초 로딩 시 흰색으로 튀는 버그를 차단합니다.
+                        if (comp.uiState === 'normal') return;
+                        
+                        comp.uiState = 'normal'; // 상태 복구
+
+                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                        comp.text.setFill('#aaaaaa'); // 명확하게 원래 회색 지정
+
+                        // 🎨 대기 상태의 원래 스킬 상자 (0x222222) 새로 그리기
+                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
+                        comp.baseBox.clear();
+                        comp.baseBox.fillStyle(0x222222, 1); 
+                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                        comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
+                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    }
                 }
-            } else if (skill.cooltime <= 0 && comp.text.text.includes('COOL')) {
-                skill.cooltime = 0;
-                comp.text.setText(`${skill.name}\n${skill.mp}MP`);
-                comp.text.setFill('#aaaaaa');
-                
-                // 🟢 쿨타임 종료 시 지우기
-                comp.coolShadow.clear();
-                
-                comp.baseBox.clear();
-                comp.baseBox.fillStyle(0x222222, 1);
-                comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                comp.baseBox.lineStyle(2, 0xaaaaaa, 1);
-                comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-            }
-        });
+            });
         
     }
     /**
