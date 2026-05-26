@@ -19,7 +19,7 @@ const config = {
         }
     },
     // 등록된 클래스 이름을 배열에 넣습니다.
-    scene: [PreloadScene, MainMenuScene, GameScene, UIScene] 
+    scene: [PreloadScene, SaveLoadScene, MainMenuScene, GameScene, UIScene] 
 };
 
 // 게임 객체 생성

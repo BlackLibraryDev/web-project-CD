@@ -22,6 +22,57 @@ class GameScene extends Phaser.Scene {
     stat;
     wave ;
     isWaveInProgress = true;
+    init(data){
+        //console.log("이전 씬에서 넘어온 데이터:", data);
+        // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
+        this.wave={value:0, timer:20000 }
+        this.score=0;
+        this.gold = 0;
+        this.skills = [
+            { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
+            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: false, mp: 20 },
+            { tag: 'forceConv', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: false, mp: 50 }
+        ];
+        this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
+            mp:0, maxMp:0,
+            manPower:0, convertionTime:8000,  
+            archer:0, 
+            archerCost:4, 
+            archerCool:1800,   
+            witch:0, 
+            witchCost:8,
+            officer:0
+
+        };
+        this.upgrades = {
+            'cathedral': [
+                { tag:'conversion', name: '👥개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
+                { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
+            ],
+            
+            
+            'barracks': [
+                { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:`👥인력으로 궁병을 고용합니다(💸-${this.stat.archerCost}) 일정시간마다 화살을 쏩니다.`},
+                { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 30, info:'궁병이 더 빨리 화살을 쏩니다'},
+                { tag:'aimShot', name: '집중사격', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:'궁병들이 해당 적에게 일제 사격을 퍼붓습니다'}
+            ],
+            'magichall': [
+                { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`},
+                { tag:'curse', name: '저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
+                { tag:'forceConv', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
+                //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
+            ],
+            'stronghold': [
+                { tag:'wallType', name: '🛡️축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
+                { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 20, info:'성벽의 최대 내구도를 증가시킵니다'},
+                { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
+                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
+            ]
+        };
+
+        
+        this.loadGame(data);
+    }
     enit(){
         // 게임이 완전히 종료될 때 실행되는 함수입니다.
         // 여기서 리소스 정리나 이벤트 리스너 제거 등을 수행할 수 있습니다.
@@ -36,52 +87,10 @@ class GameScene extends Phaser.Scene {
        this.isGameOver=false;
        this.isPaused=true;
        this.isWaveInProgress=true;       
-       this.wave={value:0, timer:20000 }
-       this.score=0;
-       this.gold = 0;
-       this.skills =[
-            {tag:'aimShot', maxCooltime:2400, cooltime:0 , unlock:false, mp:0},
-            {tag:'curse', maxCooltime:2000, cooltime:0, unlock:false, mp:20},
-
-       ];
-       this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
-            mp:0, maxMp:0,
-            manPower:0, convertionTime:8000,  
-            archer:0, 
-            archerCost:4, 
-            archerCool:1800,   
-            witch:0, 
-            witchCost:8,
-            officer:0
-
-        };
+       
        
        this.spawnTimers=[];
-        // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
-        this.upgrades = {
-            'cathedral': [
-                { tag:'conversion', name: '👥개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
-                { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
-            ],
-            
-            
-            'barracks': [
-                { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:`👥인력으로 궁병을 고용합니다(💸-${this.stat.archerCost}) 일정시간마다 화살을 쏩니다.`},
-                { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 30, info:'궁병이 더 빨리 화살을 쏩니다'}
-                //{ tag:'archerRange', name: '사거리', unlock:true, level: 0, maxLevel: 5, value: 100, cost: 120, info:''}
-            ],
-            'magichall': [
-                { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`}
-                //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
-            ],
-            'stronghold': [
-                { tag:'wallType', name: '🛡️축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
-                { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 20, info:'성벽의 최대 내구도를 증가시킵니다'},
-                { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
-                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
-            ]
-        };
-
+        
         this.registry.set('playerUpgrades', this.upgrades);
         this.registry.set('score', this.score);
         this.registry.set('gold', this.gold);
@@ -89,7 +98,7 @@ class GameScene extends Phaser.Scene {
         this.registry.set('wave', this.wave);
         this.registry.set('skills', this.skills);
         
-        this.loadGame();
+        //this.loadGame();
         
         // 여기서 UI를 다시 실행해주면 됩니다.
         
@@ -97,7 +106,13 @@ class GameScene extends Phaser.Scene {
             this.scene.launch('UIScene');
         }
         //console.log(this.scene.isActive('UIScene'));
-        
+        this.saveScene = null;
+        if (this.scene.isActive('SaveLoadScene')) {
+            this.saveScene = this.scene.get('SaveLoadScene');
+            //console.log(`${this.saveScene} is active`);
+
+            //this.scene.launch('SaveLoadScene');
+        }
 
         //배경그림
         this.setBgImage('background1');
@@ -553,15 +568,17 @@ class GameScene extends Phaser.Scene {
     applyUpgrade(category, tag) {
         //console.log(`강화 시도: 카테고리=${category}, 태그=${tag}`);
         const item = this.upgrades[category].find(element => element.tag === tag);
+        const uiScene = this.scene.get('UIScene');
         //console.log('업그레이드 아이템:', item);
         //const item = this.upgrades.find(cat => cat[0].name === category)[tag];
         //해금체크
-
+        
         if(!item.unlock){
             if(this.gold < item.cost){
-                //console.log("골드가 부족합니다.");
+                console.log("골드가 부족합니다.");
                 return;
             }
+            
         }
         // 1. 만렙 체크
         if (item.level >= item.maxLevel) {
@@ -578,7 +595,7 @@ class GameScene extends Phaser.Scene {
         }
         // 3. 비용 체크 (예시: this.gold가 있다고 가정)
         if (this.gold < item.cost) {
-            //console.log("골드가 부족합니다.");
+            console.log("골드가 부족합니다.");
             return;
         }
 
@@ -590,6 +607,14 @@ class GameScene extends Phaser.Scene {
             item.unlock = true; // 해금 처리
             item.level =item.maxLevel;
             console.log(`${item.name} -> 해금되었습니다!`);
+            //스킬해금
+            const unlockSk = this.skills.find(sk =>sk.tag == item.tag);
+            if(unlockSk !=null && unlockSk.unlock ==false){
+                unlockSk.unlock = true;
+                console.log(this.skills);
+                this.registry.set('skills',this.skills);
+                uiScene.createSkillUI();
+            }
         }
         if(item.level>-1){
             
@@ -600,10 +625,8 @@ class GameScene extends Phaser.Scene {
         }
         
         
-
         // 4. 태그에 따른 실제 효과 적용 (이 부분이 switch 문 역할)
         
-        //console.log(item.tag.split('_')[0]);
         switch (item.tag.split('_')[0]) {
             case 'wallType':
                 this.stat.armor = item.level;
@@ -642,10 +665,14 @@ class GameScene extends Phaser.Scene {
                 this.stat.archerCool -= item.value;
                 
             break;
+           
 
             case 'witch':
                 this.stat.witch++;
             break;
+            
+           
+            
             // 다른 태그에 대한 효과도 여기에 추가 가능
         }   
 
@@ -1073,7 +1100,7 @@ class GameScene extends Phaser.Scene {
                 this.fadeOutAndDestroy(this, mob);
                 this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
             }
-            else if (activeSkill === 'conversion') {
+            else if (activeSkill === 'forceConv') {
                 console.log(`👥 ${skill.name} 발동! ${mob.key}가 개종됩니다.`);
                 this.updateScore(mob.score);
                 mob.destroy();
@@ -1134,33 +1161,45 @@ class GameScene extends Phaser.Scene {
 
 
     saveGame() {
+        const now = new Date();
+    
+        // 2️⃣ 년, 월, 일 변수 가공 (월은 0부터 시작하므로 +1, 자릿수 맞춤)
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+
+        // 3️⃣ 시, 분 변수 가공 (초까지 필요하다면 똑같이 추가 가능)
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+
+        // 4️⃣ 저장용 문자열 완성 ➔ "2026.05.27 14:35" 형태
+        const formattedDate = `${year}.${month}.${day} ${hours}:${minutes}`;
         // 1. 저장할 핵심 데이터들을 하나의 객체로 모읍니다.
         const gameData = {
+            version:window.GAME_VERSION ,
+            lastPlayTime: formattedDate ,
             stat: this.registry.get('stat') ,
             wave: this.registry.get('wave'), // 웨이브 정보도 저장
             gold: this.registry.get('gold') || 0,
             score: this.registry.get('score') || 0,
-            upgrades: this.registry.get('playerUpgrades')
+            skills:this.registry.get('skills'),
+            upgrades: this.registry.get('playerUpgrades'),
+            isEmpty: false
                 
         };
-
-        // 2. 객체를 문자열(JSON)로 변환하여 브라우저에 저장합니다.
-        // 'projectCD_data'는 우리 게임만의 고유한 저장소 이름입니다.
-        localStorage.setItem('projectCD_data', JSON.stringify(gameData));
-        
-        console.log('💾 게임이 안전하게 저장되었습니다!', gameData);
+        return gameData;
     }
 
     /**
      * 📂 저장된 게임 데이터를 불러오는 함수
      */
-    loadGame() {
+    loadGame(data) {
         // 1. 브라우저에서 저장된 데이터가 있는지 가져옵니다.
-        const savedData = localStorage.getItem('projectCD_data');
-
-        if (savedData) {
+        //this.scene.get('SaveLoadScene').loadGameData(); //loadGameRawData();
+        
+        if (data && data.stat!=null) {
             // 2. 저장된 데이터가 있다면 문자열을 다시 원래 객체로 파싱합니다.
-            const data = JSON.parse(savedData);
+            //const data = JSON.parse(savedData);
 
             // 3. 게임 내부 변수들에 데이터를 덮어씌웁니다.
             if(data.stat.mp ==null) data.stat.mp = 0;
@@ -1169,11 +1208,12 @@ class GameScene extends Phaser.Scene {
             data.stat.witchCost = this.stat.witchCost;
             data.stat.archerCost = this.stat.archerCost;
 
+            if(data.skills ==null) data.skills = this.skills;
+
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
             this.wave = data.wave || this.wave;
             this.gold = data.gold || this.gold;
             this.score = data.score || this.score;
-            
             
             const categories = Object.keys(this.upgrades);
             categories.forEach((name) => {
@@ -1189,6 +1229,7 @@ class GameScene extends Phaser.Scene {
                         }else{
                             arr[i].info = org[i].info;
                             arr[i].name = org[i].name;
+                            if(arr[i].unlock==false){ arr[i].level =0}
                         }
                     
                     }
@@ -1197,10 +1238,14 @@ class GameScene extends Phaser.Scene {
             });
             this.upgrades = data.upgrades || this.upgrades;
 
+            this.skills = data.skills;
+            
+
             this.registry.set('stat', this.stat);
             this.registry.set('wave', this.wave);
             this.registry.set('gold', this.gold);
             this.registry.set('score', this.score);
+            this.registry.set('skills', this.skills);
             this.registry.set('playerUpgrades', this.upgrades);
             
             console.log('📂 데이터를 성공적으로 불러왔습니다!', data);

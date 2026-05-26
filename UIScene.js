@@ -10,7 +10,11 @@ class UIScene extends Phaser.Scene {
     wave = {value:1, timer:10000}
     create() {
         // 씬이 생성된 고유 ID 생성 (랜덤값)
-        this.instanceId = Math.floor(Math.random() * 1000);
+        this.saveLoadScene = this.scene.get('SaveLoadScene');
+        this.saveName = this.saveLoadScene.loadGameData;
+        console.log(`saveName : ${this.saveName}`);
+
+
         this.stat = this.registry.get('stat');
         this.isPaused=false;    
         this.selectedCategory = null; // 현재 선택된 카테고리
@@ -212,7 +216,8 @@ class UIScene extends Phaser.Scene {
         //스킬창 표시
         this.createSkillUI();
         //게임 시작
-        const savedData = localStorage.getItem('projectCD_data');
+        
+        const savedData = localStorage.getItem(this.saveLoadScene.loadGameData );
         if(savedData){
             //게임시작 전 업그레이드 창 
             this.scene.get('GameScene').setBgImage('background1',true);
@@ -231,25 +236,7 @@ class UIScene extends Phaser.Scene {
 
         
 
-        // html에서 설정한 전역 변수 가져오기 (없을 경우를 대비해 기본값 세팅)
-        const currentVersion = window.GAME_VERSION || "알 수 없는 버전";
-
-        // 화면 우측 하단 구석에 조그맣게 버전 표시
-        const versionTxt = this.add.text(
-            this.cameras.main.width - 10, 
-            this.cameras.main.height - 10, 
-            `project CD / BlackLibrary, 2026 - Build ${currentVersion}`, 
-            {
-                fontFamily: 'Arial',
-                fontSize: '14px',
-                fill: '#ffffff',
-                align: 'right'
-            }
-        );
-        versionTxt.setDepth(99);
-        versionTxt.setOrigin(1, 1); 
-        //versionTxt.setAlpha(0.5); // 너무 밝으면 방해되니 살짝 투명하게
-        // 우측 하단 기준점(Origin) 정렬
+        
         
         this.events.once('shutdown', () => {
             this.registry.events.off('changedata-wave');
@@ -718,6 +705,13 @@ class UIScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
         saveBg.on('pointerdown', (pointer, localX, localY, event) => {
+            this.saveLoadScene.saveWindowVisible(true,'savedata');
+            return;
+            
+        // 2. 객체를 문자열(JSON)로 변환하여 브라우저에 저장합니다.
+        // 'projectCD_data'는 우리 게임만의 고유한 저장소 이름입니다.
+        localStorage.setItem('projectCD_data', JSON.stringify(gameData));
+
             if (pointer && pointer.event) pointer.event.preventDefault();
             // 💡 함수를 호출하면서 문구와 실행할 로직을 던져줍니다.
             this.showConfirmPopup(
@@ -907,6 +901,8 @@ class UIScene extends Phaser.Scene {
      */
     setSkillUIVisibility(isVisible) {
         if (!this.skillUIComponents) return;
+        //this.manaBar.setVisible(isVisible);
+        //this.manaTxt.setVisible(isVisible);
 
         Object.keys(this.skillUIComponents).forEach(tag => {
             const comp = this.skillUIComponents[tag];
@@ -931,24 +927,41 @@ class UIScene extends Phaser.Scene {
             this.deactivateAllSkills();
         }
     }
+    clearSkillUI() {
+        if (!this.skillUIComponents) return;
+
+        // 보관함에 들어있는 모든 스킬의 그래픽스와 텍스트를 순회하며 완전히 파괴합니다.
+        Object.keys(this.skillUIComponents).forEach(tag => {
+            const comp = this.skillUIComponents[tag];
+            if (comp) {
+                if (comp.baseBox) comp.baseBox.destroy();       // 바탕 상자 제거 (이벤트도 자동 해제됨)
+                if (comp.coolShadow) comp.coolShadow.destroy(); // 쿨타임 그림자 제거
+                if (comp.maskGraphics) comp.maskGraphics.destroy(); // 사각형 마스크 제거
+                if (comp.text) comp.text.destroy();             // 텍스트 객체 제거
+            }
+        });
+
+        // 바구니 자체를 완전히 빈 객체로 초기화합니다.
+        this.skillUIComponents = {};
+        this.activeSkillTag = null; // 장전 상태도 초기화
+    }
     createSkillUI() {
+        this.clearSkillUI();
         const { width, height } = this.cameras.main;
         // 1. 데이터 베이스 참조 (스킬 리스트)
-        this.skills = [
-            { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock: true, mp: 0 }, 
-            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: true, mp: 20 },
-            { tag: 'conversion', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: true, mp: 50 }
-        ];
+        this.skills = this.registry.get('skills');
 
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
         this.activeSkillTag = null; 
+        const activatedSkills = this.skills.filter(item => item.unlock)  //배열 아이템 중 특정 변수값이 true 인 경우 getMatching('unlock',true);
+        //console.log(activatedSkills);
         const spacing = 100; // 아이콘 간격
-        const startX = width/2 - (this.skills.length/2)*spacing + spacing/2; // 스킬 바 시작 X 위치
+        const startX = width/2 - (activatedSkills.length/2)*spacing + spacing/2; // 스킬 바 시작 X 위치
         const startY = height-50;
 
         this.skillUIComponents = {};
 
-        this.skills.forEach((skill, index) => {
+        activatedSkills.forEach((skill, index) => {
             if (!skill.unlock) return;
 
             const x = startX + (index * spacing);
@@ -1092,7 +1105,7 @@ class UIScene extends Phaser.Scene {
             this.skills.forEach(skill => {
                 const comp = this.skillUIComponents[skill.tag];
                 if (!comp) return;
-
+                
                 // 1️⃣ [쿨타임 상태]
                 if (skill.cooltime > 0) {
                     skill.cooltime -= delta;

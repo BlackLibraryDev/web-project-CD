@@ -12,6 +12,8 @@ class MainMenuScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        
+
         // GameScene이나 UIScene의 create() 단계에 배치
         const fsButton = this.add.text(150, height-40, '🖥️ FULLSCREEN', {
             fontFamily: 'Arial',
@@ -100,18 +102,20 @@ class MainMenuScene extends Phaser.Scene {
         startButton.on('pointerout', () => startButton.setColor('#ffcc00').setScale(1.0));
 
         newGameButton.on('pointerover', () => newGameButton.setColor('#ffffff').setScale(1.1));
-        newGameButton.on('pointerout', () => newGameButton.setColor('#ffcc00').setScale(1.0));
+        newGameButton.on('pointerout', () =>  newGameButton.setColor('#ffcc00').setScale(1.0));
 
         if(savedData){
             startButton.text = '[ CONTINUE ]';
         }
         // 클릭 시 인게임(GameScene)으로 전환
         startButton.on('pointerdown', () => {
-            this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
-            this.scene.start('GameScene');
+            this.scene.get('SaveLoadScene').saveWindowVisible(true, 'dataload');
         });
         // 클릭 시 인게임(GameScene)으로 전환
          newGameButton.on('pointerdown', (pointer) => {
+            this.newGameStart()
+            return;
+
 
              if (savedData) {
                 if (pointer && pointer.event) pointer.event.preventDefault();
@@ -119,34 +123,21 @@ class MainMenuScene extends Phaser.Scene {
                 this.showConfirmPopup(
                     '저장된 데이터가 있습니다. \n새로 시작하시겠습니까?', 
                     () => {
-                        this.newGameStart();
+                        this.newGameStart(null);
                     }
                 );
              }else{
-                 this.newGameStart();
+                 this.newGameStart(null);
              }
         });
 
 
 
-        // html에서 설정한 전역 변수 가져오기 (없을 경우를 대비해 기본값 세팅)
-        const currentVersion = window.GAME_VERSION || "알 수 없는 버전";
-
-        // 화면 우측 하단 구석에 조그맣게 버전 표시
-        const versionTxt = this.add.text(
-            width - 10, 
-            height - 10, 
-            `project CD / BlackLibrary, 2026 - Build ${currentVersion}`, 
-            {
-                fontFamily: 'Arial',
-                fontSize: '14px',
-                fill: '#ffffff',
-                align: 'right'
-            }
-        );
-        versionTxt.setDepth(99);
-        versionTxt.setOrigin(1, 1); 
-        //versionTxt.setAlpha(0.9); // 너무 밝으면 방해되니 살짝 투명하게
+        if (!this.scene.isActive('SaveLoadScene')) {
+            this.scene.launch('SaveLoadScene');
+            this.scene.bringToTop('SaveLoadScene');
+        }
+        
     }
 
     fadeOutAndDestroy(scene, mob) {
@@ -174,10 +165,9 @@ class MainMenuScene extends Phaser.Scene {
             onComplete: () => blood.destroy()
         });
     }
-    newGameStart(){
+    newGameStart( data = null){
         this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
-        localStorage.removeItem('projectCD_data'); // 기존 데이터 삭제
-        this.scene.start('GameScene');
+        this.scene.start('GameScene' ,data );
     }
      /**
      * 💡 언제든 재활용할 수 있는 미니멀 확인 팝업창
