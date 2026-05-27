@@ -54,12 +54,12 @@ class GameScene extends Phaser.Scene {
             'barracks': [
                 { tag:'archer', name: '🏹궁병 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:`👥인력으로 궁병을 고용합니다(💸-${this.stat.archerCost}) 일정시간마다 화살을 쏩니다.`},
                 { tag:'archerTraining', name: '속사 훈련', unlock:true, level: 1, maxLevel: 5, value: 100, cost: 30, info:'궁병이 더 빨리 화살을 쏩니다'},
-                { tag:'aimShot', name: '집중사격', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:'궁병들이 해당 적에게 일제 사격을 퍼붓습니다'}
+                { tag:'aimShot', name: '⚡집중사격', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:'궁병들이 해당 적에게 일제 사격을 퍼붓습니다'}
             ],
             'magichall': [
                 { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`},
-                { tag:'curse', name: '저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 25, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
-                { tag:'forceConv', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
+                { tag:'curse', name: '⚡저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 25, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
+                { tag:'forceConv', name: '⚡개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
@@ -379,12 +379,14 @@ class GameScene extends Phaser.Scene {
         switch (mobData.mobNumber){
             case 1:
                 //기본 몹
+                mob.name = 'doorknocker';
                 mob.speed = mobData.speed || 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 1;
                 mob.score = mobData.score || 1;
             break;
             case 2:
                 //wallbreaker
+                mob.name = 'wallbreaker';
                 mob.speed = mobData.speed || 80 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 4;
                 mob.score = mobData.score || 2;
@@ -392,6 +394,7 @@ class GameScene extends Phaser.Scene {
             break;
             case 3:
                 //archer
+                mob.name = 'archer';
                 mob.speed = mobData.speed || 90 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 1;
                 mob.score = mobData.score || 2;
@@ -406,6 +409,7 @@ class GameScene extends Phaser.Scene {
             break;
             case 10:
                 //Giant
+                mob.name = 'giant';
                 mob.speed = mobData.speed || 210 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 3;
                 mob.score = mobData.score || 3;
@@ -1107,7 +1111,7 @@ class GameScene extends Phaser.Scene {
 
             // 💥 [스킬 1] 조준 사격 (AimShot) 발동
             if (activeSkill === 'aimShot') {
-                console.log(`🏹 ${skill.name} 발동! ${mob.key}에게 집중사격!`);
+                console.log(`🏹 ${skill.name} 발동! ${mob.name}에게 집중사격!`);
                 this.archerFire( mob);
                 mob.body.setVelocity(0,0);
                 //mob.currentHp -= 300; // 일반 공격보다 강력한 데미지
@@ -1115,12 +1119,12 @@ class GameScene extends Phaser.Scene {
             } 
             // 💥 [스킬 2] 저주 (Curse) 발동
             else if (activeSkill === 'curse') {
-                console.log(`💀 ${skill.name} 발동! ${mob.key}가 즉시 사망합니다`);
+                console.log(`💀 ${skill.name} 발동! ${mob.name}가 즉시 사망합니다`);
                 this.fadeOutAndDestroy(this, mob);
                 this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
             }
             else if (activeSkill === 'forceConv') {
-                console.log(`👥 ${skill.name} 발동! ${mob.key}가 개종됩니다.`);
+                console.log(`👥 ${skill.name} 발동! ${mob.name}가 개종됩니다.`);
                 this.updateScore(mob.score);
                 mob.destroy();
                 this.data.earnManpower ++;
@@ -1131,7 +1135,7 @@ class GameScene extends Phaser.Scene {
             skill.cooltime = skill.maxCooltime;
 
             // 4. 📴 스킬을 사용했으니 장전 상태(토글)를 해제하여 평소 상태로 돌립니다.
-            //uiScene.deactivateAllSkills();
+            uiScene.deactivateAllSkills();
 
         } 
         // 3. 장전된 스킬이 없다면 (activeSkill === null)

@@ -17,9 +17,11 @@ class SaveLoadScene extends Phaser.Scene {
         }
         this.storageName = 'projectCD_data';
         this.loadGameData = null;
+
+        this.gameOption = null;
         this.loadOption();
         this.saveOption();
-
+        this.registry.set('optionData', this.gameOption  );
 
         this.noticeData = [
             { date: "2026.05.28", title: "업데이트 - 숙련된 기술(skilful skill)",
@@ -324,19 +326,26 @@ class SaveLoadScene extends Phaser.Scene {
                // console.log(saveData);
                 if (key=='savedata'){
                     //저장 확인하기
-                    this.showConfirmPopup(
-                        `게임 진행 상황이 ${slotIndex}번째 슬롯에 저장됩니다.\n계속하시겠습니까?`, 
-                        () => {
+                    if(saveData.isEmpty){
+                        //빈 슬롯에 바로 저장
+                        this.saveWindowVisible(false);
+                        this.saveGameRawData(`${this.storageName}${slotIndex}`,  this.scene.get('GameScene').saveGame() );
                             
-                            this.saveWindowVisible(false);
-                            this.saveGameRawData(`${this.storageName}${slotIndex}`,  this.scene.get('GameScene').saveGame() );
-                           // this.saveWindowVisible(true);
-                        }
-                        ,
-                        () =>{
-                            //this.saveWindowVisible(false);
-                        }
-                    );
+                    }else{
+                        this.showConfirmPopup(
+                            `게임 진행 상황이 ${slotIndex}번째 슬롯에 저장됩니다.\n계속하시겠습니까?`, 
+                            () => {
+                                
+                                this.saveWindowVisible(false);
+                                this.saveGameRawData(`${this.storageName}${slotIndex}`,  this.scene.get('GameScene').saveGame() );
+                            // this.saveWindowVisible(true);
+                            }
+                            ,
+                            () =>{
+                                //this.saveWindowVisible(false);
+                            }
+                        );
+                    }
                     
                     
                 } else if(key == 'dataload') {
@@ -348,7 +357,7 @@ class SaveLoadScene extends Phaser.Scene {
                         this.saveWindow.setVisible(false);
                         this.loadData = saveData;
                         this.loadGameData = `${this.storageName}${slotIndex}`;
-                        console.log(`불러온 데이터:`, this.loadData);
+                        //console.log(`불러온 데이터:`, this.loadData);
                         this.scene.get('MainMenuScene').newGameStart( saveData );
                         //this.loadGameFromSlot(slotIndex);
                     }
@@ -406,6 +415,7 @@ class SaveLoadScene extends Phaser.Scene {
     saveOption(){
         const gameOption ={
             loadGameData: 'projectCD_data',
+            autoSkillHold:true
         }
         localStorage.setItem('projectCD_saveOption', JSON.stringify(gameOption));
     }
@@ -414,7 +424,10 @@ class SaveLoadScene extends Phaser.Scene {
         if(saveOption){
             const data = JSON.parse(saveOption);
             //저장된 환경설정 변수가 있다면?
+            if(data.autoSkillHold!=null) data.autoSkillHold=true;
+
             this.loadGameData = data.loadGameData;
+            this.gameOption = data;
             console.log(`환경설정을 불러왔습니다`,data);
         }
     }

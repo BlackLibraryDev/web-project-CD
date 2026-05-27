@@ -752,20 +752,6 @@ class UIScene extends Phaser.Scene {
         saveBg.on('pointerdown', (pointer, localX, localY, event) => {
             this.saveLoadScene.saveWindowVisible(true,'savedata');
             return;
-            
-        // 2. 객체를 문자열(JSON)로 변환하여 브라우저에 저장합니다.
-        // 'projectCD_data'는 우리 게임만의 고유한 저장소 이름입니다.
-        localStorage.setItem('projectCD_data', JSON.stringify(gameData));
-
-            if (pointer && pointer.event) pointer.event.preventDefault();
-            // 💡 함수를 호출하면서 문구와 실행할 로직을 던져줍니다.
-            this.showConfirmPopup(
-                '게임 진행 상황이 저장됩니다.\n계속하시겠습니까?', 
-                () => {
-                    this.scene.get('GameScene').saveGame();
-                    this.saveButton.setText('저장완료!');
-                }
-            );
         });
         this.upgradeWindow.add([saveBg, this.saveButton]);
 
@@ -778,7 +764,7 @@ class UIScene extends Phaser.Scene {
             'stronghold':'🏰건축소',
             'cathedral' :'⛪대성당',
             'barracks' : '🏹훈련소',
-            'magichall' : '🪄마술사의 샘'
+            'magichall' : '🪄마녀의 샘'
         }
 
         // 3. 추출된 이름을 바탕으로 버튼 생성
@@ -788,16 +774,16 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(name); // 첫 번째 카테고리 자동 선택
             }
 
-            const xPos = -200 + (index * 150); // 150px 간격으로 배치
+            const xPos = -220 + (index * 160); // 150px 간격으로 배치
             const yPos = -190;
 
             // 1. 배경 사각형 (모두 동일한 120x40 사이즈)
-            const bg = this.add.rectangle(xPos, yPos, 140, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
+            const bg = this.add.rectangle(xPos, yPos, 150, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
                 this.buttons.push(bg); // 버튼을 배열에 저장
             // 2. 버튼 텍스트 (사각형 중앙에 배치)
             const txt = this.add.text(xPos, yPos, categoryNames[name], { 
-                fontSize: '18px', 
+                fontSize: '24px', 
                 color: '#ffffff' ,
                 padding:{x:3,y:3}
             }).setOrigin(0.5); // 중심점을 중앙으로 설정
@@ -986,18 +972,30 @@ class UIScene extends Phaser.Scene {
             }
         });
 
+
+
+
         // 바구니 자체를 완전히 빈 객체로 초기화합니다.
         this.skillUIComponents = {};
         this.activeSkillTag = null; // 장전 상태도 초기화
+
+
     }
     createSkillUI() {
         this.clearSkillUI();
         const { width, height } = this.cameras.main;
         const size = 80; // 사각형 상자 크기 (60x60)
         const size2 = 96;
+        const fontStyle = {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '28px',
+            fill: '#aaaaaa',
+            align: 'center'
+        };
 
         // 1. 데이터 베이스 참조 (스킬 리스트)
         this.skills = this.registry.get('skills');
+        this.activeSkillTagHold = false;
 
         //activeSkillBt 시전 박스
         this.activeSkillBox = this.add.container(0,0);
@@ -1005,7 +1003,52 @@ class UIScene extends Phaser.Scene {
         activeskbox.fillStyle(0x0076d7, 1).fillRect( -size2 / 2, -size2 / 2, size2, size2);
         this.activeSkillBox.add( activeskbox);
 
+        //스킬시전 잠금
+        this.holdSkillBt = this.add.container(0,0).setDepth(5);
+        const holdskillbox = this.add.graphics();
+        holdskillbox.fillStyle(0xffffff,0).fillRect(-size/2, -size/2, size, size);
+        //const holdskllTxt = this.add.text(0,0, ` \n${this.activeSkillTagHold}`, fontStyle).setOrigin(0.5);
+        
+        const holdskllTxt0 = this.add.text(0,-42, `Keep`, {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#3499ff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'center'}).setOrigin(0.5);
+        this.holdSkillBt.add([holdskillbox, holdskllTxt0]); //, holdskllTxt
 
+        // 🌟 [핵심 해결책] 컨테이너에게 정확한 클릭 영역(HitArea)을 주입합니다.
+        
+        /*
+        this.holdSkillBt.setInteractive(
+            new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size), // 1. 상자 크기와 동일한 가상 사각형
+            Phaser.Geom.Rectangle.Contains                              // 2. 사각형 내부 판정 콜백 함수
+        );
+
+        // 마우스 커서 손모양 변경은 따로 설정해 줍니다.
+        this.holdSkillBt.input.cursor = 'pointer';
+        this.holdSkillBt.on('pointerdown', () => {
+            //토글버튼
+            if(this.activeSkillTagHold){
+                this.activeSkillTagHold=false;
+            }else{
+                this.activeSkillTagHold=true;
+            }
+            holdskllTxt.setText( ` \n${this.activeSkillTagHold}` );
+            // 🌟 [핵심] 상태에 따라 색상 분기 처리
+            if (this.activeSkillTagHold) {
+                holdskllTxt.setFill('#0076d7'); // true일 때: 활성화 느낌의 초록색
+            } else {
+                holdskllTxt.setFill('#aaaaaa'); // false일 때: 비활성화 느낌의 어두운 회색
+            }
+        });
+        // 🌟 [핵심] 상태에 따라 색상 분기 처리
+        if (this.activeSkillTagHold) {
+            holdskllTxt.setFill('#0076d7'); // true일 때: 활성화 느낌의 초록색
+        } else {
+            holdskllTxt.setFill('#aaaaaa'); // false일 때: 비활성화 느낌의 어두운 회색
+        }
+        */
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
         this.activeSkillTag = null; 
         const activatedSkills = this.skills.filter(item => item.unlock)  //배열 아이템 중 특정 변수값이 true 인 경우 getMatching('unlock',true);
@@ -1048,12 +1091,7 @@ class UIScene extends Phaser.Scene {
             baseBox.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
 
             // 5. 전면 글자 배치
-            const fontStyle = {
-                fontFamily: 'Impact, Arial Black, sans-serif',
-                fontSize: '28px',
-                fill: '#aaaaaa',
-                align: 'center'
-            };
+            
             const labelText = this.add.text(x, y, `${skill.name}\n${skill.mp}MP`, fontStyle).setOrigin(0.5);
 
             // 6. 모든 데이터를 바구니에 저장
@@ -1072,12 +1110,25 @@ class UIScene extends Phaser.Scene {
 
             // 7. 클릭(토글) 이벤트
             baseBox.on('pointerdown', () => {
-                if (skill.cooltime > 0) return;
-
+                
+                
                 if (this.activeSkillTag === skill.tag) {
-                    this.deactivateAllSkills();
+                    if(this.activeSkillTagHold ==true){
+                        
+                        this.activeSkillTagHold=false;
+                        this.deactivateAllSkills();
+                    }else{
+                        this.activeSkillTagHold=true;
+                    }
+                    
+                    
+                    //this.deactivateAllSkills();
                 } else {
+                    if (skill.cooltime > 0) return;
+                    console.log(33);
                     this.deactivateAllSkills();
+                    this.activeSkillTagHold= false// this.registry.get('optionData').autoSkillHold;
+                    //console.log(this.registry.get('optionData').autoSkillHold);
                     this.activeSkillTag = skill.tag;
                     
                     // 토글 ON: 테두리를 황금색으로 변경
@@ -1099,6 +1150,8 @@ class UIScene extends Phaser.Scene {
      * 모든 스킬의 불빛을 끄고 초기 비활성화 색상으로 되돌리는 함수
      */
     deactivateAllSkills() {
+        if(this.activeSkillTagHold) return; //스킬시전유지가 켜져있는경우
+
         this.activeSkillTag = null;
         if (!this.skillUIComponents) return;
 
@@ -1116,6 +1169,8 @@ class UIScene extends Phaser.Scene {
         });
     }
     update(time, delta) {
+        //const gameScene = this.scene.get('GameScene');
+
         if(!this.wave || this.waveBar ==null){
             return;
         }
@@ -1155,100 +1210,109 @@ class UIScene extends Phaser.Scene {
         }
        
         if (!this.skillUIComponents) return;
-    
-            const firstKey = Object.keys(this.skillUIComponents)[0];
-            if (firstKey && !this.skillUIComponents[firstKey].baseBox.visible) return;
+        const firstKey = Object.keys(this.skillUIComponents)[0];
+        if (firstKey && !this.skillUIComponents[firstKey].baseBox.visible) return;
+        /*
+        if(firstKey){
+             //console.log(this.holdSkillBt.x, this.holdSkillBt.y);
+            this.holdSkillBt.x = this.skillUIComponents[firstKey].startX - 100;
+            this.holdSkillBt.y = this.skillUIComponents[firstKey].startY;
+           
+        }*/
+        
+        
+        this.holdSkillBt.setVisible(this.activeSkillTagHold);
 
-            const gameScene = this.scene.get('GameScene');
-            const currentMp = gameScene.stat ? gameScene.stat.mp : 0; 
-
-            this.skills.forEach(skill => {
-                const comp = this.skillUIComponents[skill.tag];
-                if (!comp) return;
+        this.skills.forEach(skill => {
+            const comp = this.skillUIComponents[skill.tag];
+            if (!comp) return;
+            
+            if(skill.tag == this.activeSkillTag){
+                //지금 스킬이 액티브 스킬박스와 같다면?
+                //console.log(comp.startX, comp.startY);
+                this.activeSkillBox.x = comp.startX;
+                this.activeSkillBox.y = comp.startY;
                 
-                if(skill.tag == this.activeSkillTag){
-                    //지금 스킬이 액티브 스킬박스와 같다면?
-                    //console.log(comp.startX, comp.startY);
-                    this.activeSkillBox.x = comp.startX;
-                    this.activeSkillBox.y = comp.startY;
+                this.holdSkillBt.x = comp.startX;
+                this.holdSkillBt.y = comp.startY;
+            }
+
+            // 1️⃣ [쿨타임 상태]
+            if (skill.cooltime > 0) {
+                const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.1 ) : 1 ; //witch의 스킬인 경우
+                skill.cooltime -= delta * coolSpeed;
+                comp.uiState = 'cooldown'; // 상태 변경
+
+                const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1)
+                const displaySec = remainingSec > 0 ? remainingSec : '0.0';
+                comp.text.setText(`${displaySec}s\nCOOL`);
+                comp.text.setFill('#ff4d4d');
+
+                const progress = skill.cooltime / skill.maxCooltime; 
+                comp.coolShadow.clear();
+                comp.coolShadow.fillStyle(0x000000, 0.6); 
+
+                // 12시 방향 시작 (-90도)
+                const startAngle = Phaser.Math.DegToRad(-90);
+
+                // 🌟 더하기(+) 대신 빼기(-)를 사용해 반시계 방향으로 각도를 도출합니다.
+                const endAngle = startAngle - Phaser.Math.DegToRad(360 * progress);
+
+                comp.coolShadow.clear();
+                comp.coolShadow.fillStyle(0x000000, 0.6); 
+
+                // 🌟 마지막 인자(Anticlockwise)를 false에서 true로 변경합니다.
+                comp.coolShadow.slice(comp.startX, comp.startY, comp.size * 1.5, startAngle, endAngle, true);
+                comp.coolShadow.fillPath();
+
+                comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
+                comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+
+                if (this.activeSkillTag === skill.tag) {
+                    //this.activeSkillTag = null;
                 }
+            } 
+            // 2️⃣ [대기 상태] 쿨타임이 아닐 때
+            else {
+                // if (this.activeSkillTag === skill.tag) return;
 
-                // 1️⃣ [쿨타임 상태]
-                if (skill.cooltime > 0) {
-                    const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.1 ) : 1 ; //witch의 스킬인 경우
-                    skill.cooltime -= delta * coolSpeed;
-                    comp.uiState = 'cooldown'; // 상태 변경
-
-                    const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1)
-                    const displaySec = remainingSec > 0 ? remainingSec : '0.0';
-                    comp.text.setText(`${displaySec}s\nCOOL`);
-                    comp.text.setFill('#ff4d4d');
-
-                    const progress = skill.cooltime / skill.maxCooltime; 
-                    comp.coolShadow.clear();
-                    comp.coolShadow.fillStyle(0x000000, 0.6); 
-
-                    // 12시 방향 시작 (-90도)
-                    const startAngle = Phaser.Math.DegToRad(-90);
-
-                    // 🌟 더하기(+) 대신 빼기(-)를 사용해 반시계 방향으로 각도를 도출합니다.
-                    const endAngle = startAngle - Phaser.Math.DegToRad(360 * progress);
-
-                    comp.coolShadow.clear();
-                    comp.coolShadow.fillStyle(0x000000, 0.6); 
-
-                    // 🌟 마지막 인자(Anticlockwise)를 false에서 true로 변경합니다.
-                    comp.coolShadow.slice(comp.startX, comp.startY, comp.size * 1.5, startAngle, endAngle, true);
-                    comp.coolShadow.fillPath();
-
-                    comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
+                // ❌ [마나 부족] 
+                if (this.stat.mp < skill.mp) {
+                    // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
+                    
+                    if (comp.uiState === 'low-mp') return;
+                    comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
+                    comp.uiState = 'low-mp'; // 상태 확정
+                    comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                    
+                    comp.baseBox.clear();
+                    comp.baseBox.fillStyle(0x111111, 1); // 어두운 흑색 바탕
+                    comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
                     comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
 
-                    if (this.activeSkillTag === skill.tag) {
-                        //this.activeSkillTag = null;
-                    }
+                    comp.text.setFill('#ff4d4d');
                 } 
-                // 2️⃣ [대기 상태] 쿨타임이 아닐 때
+                // ⭕ [사용 가능] 마나가 충분할 때
                 else {
-                   // if (this.activeSkillTag === skill.tag) return;
+                    // 💡 이미 원래 상태('normal')라면 연산을 생략하여 최초 로딩 시 흰색으로 튀는 버그를 차단합니다.
+                    if (comp.uiState === 'normal') return;
+                    
+                    comp.uiState = 'normal'; // 상태 복구
 
-                    // ❌ [마나 부족] 
-                    if (currentMp < skill.mp) {
-                        // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
-                        
-                        if (comp.uiState === 'low-mp') return;
-                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
-                        comp.uiState = 'low-mp'; // 상태 확정
-                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
-                        
-                        comp.baseBox.clear();
-                        comp.baseBox.fillStyle(0x111111, 1); // 어두운 흑색 바탕
-                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                        comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
-                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                    comp.text.setFill('#aaaaaa'); // 명확하게 원래 회색 지정
 
-                        comp.text.setFill('#ff4d4d');
-                    } 
-                    // ⭕ [사용 가능] 마나가 충분할 때
-                    else {
-                        // 💡 이미 원래 상태('normal')라면 연산을 생략하여 최초 로딩 시 흰색으로 튀는 버그를 차단합니다.
-                        if (comp.uiState === 'normal') return;
-                        
-                        comp.uiState = 'normal'; // 상태 복구
-
-                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
-                        comp.text.setFill('#aaaaaa'); // 명확하게 원래 회색 지정
-
-                        // 🎨 대기 상태의 원래 스킬 상자 (0x222222) 새로 그리기
-                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
-                        comp.baseBox.clear();
-                        comp.baseBox.fillStyle(0x222222, 1); 
-                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                        comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
-                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                    }
+                    // 🎨 대기 상태의 원래 스킬 상자 (0x222222) 새로 그리기
+                    comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
+                    comp.baseBox.clear();
+                    comp.baseBox.fillStyle(0x222222, 1); 
+                    comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
+                    comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
                 }
-            });
+            }
+        });
         
     }
     
