@@ -4,6 +4,7 @@ class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
+        //아이콘 :  💾저장 🏰건축소',⛪대성당',🏹훈련소',🪄마술사의 샘' 💸 유지비  💀 주둔군 💰 골드 👥 개종
         // 1. 간단한 로딩 텍스트 표시
         let width = this.cameras.main.width;
         let height = this.cameras.main.height;
@@ -15,6 +16,8 @@ class PreloadScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 2. 모든 리소스 로드
+        this.load.image('radarGlow', 'assets/radarGlow.png');
+        
         this.load.image('menu_bg', 'assets/bg1.png');
 
         this.load.image('background1', 'assets/bg1.png');

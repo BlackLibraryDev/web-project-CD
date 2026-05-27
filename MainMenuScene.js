@@ -69,7 +69,7 @@ class MainMenuScene extends Phaser.Scene {
             loop: true
         });
         this.physics.add.collider(this.mobs, platforms, (mob, ground) => {
-            console.log('몹이 땅에 닿았습니다!');
+           // console.log('몹이 땅에 닿았습니다!');
             this.fadeOutAndDestroy(this, mob);
         });
 
@@ -91,11 +91,21 @@ class MainMenuScene extends Phaser.Scene {
         const newGameButton = this.add.text(width *0.1, height * 0.7, '[ NEW GAME ]', {
             fontFamily: 'Arial',
             fontSize: '36px',
-            fill: '#ffcc00',
+            fill: '#0076d7',
             fontStyle: 'bold',
             stroke: '#000000',
             strokeThickness: 3
         }).setOrigin(0).setInteractive({ useHandCursor: true });
+
+        const noticeButton = this.add.text(width *0.1, height * 0.8, '[ Notice ]', {
+            fontFamily: 'Arial',
+            fontSize: '28px',
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0).setInteractive({ useHandCursor: true });
+
 
         // 마우스 올렸을 때 효과
         startButton.on('pointerover', () => startButton.setColor('#ffffff').setScale(1.1));
@@ -115,22 +125,12 @@ class MainMenuScene extends Phaser.Scene {
          newGameButton.on('pointerdown', (pointer) => {
             this.newGameStart()
             return;
-
-
-             if (savedData) {
-                if (pointer && pointer.event) pointer.event.preventDefault();
-                // 💡 함수를 호출하면서 문구와 실행할 로직을 던져줍니다.
-                this.showConfirmPopup(
-                    '저장된 데이터가 있습니다. \n새로 시작하시겠습니까?', 
-                    () => {
-                        this.newGameStart(null);
-                    }
-                );
-             }else{
-                 this.newGameStart(null);
-             }
         });
 
+        noticeButton.on('pointerdown', (pointer) => {
+            this.scene.get('SaveLoadScene').openNoticeWindow();
+            return;
+        });
 
 
         if (!this.scene.isActive('SaveLoadScene')) {

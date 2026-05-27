@@ -25,13 +25,13 @@ class GameScene extends Phaser.Scene {
     init(data){
         //console.log("이전 씬에서 넘어온 데이터:", data);
         // 1. 초기 스탯 객체 생성 (레벨, 현재 수치, 강화 비용 등)
-        this.wave={value:0, timer:20000 }
+        this.wave={value:0, timer:20000 };
         this.score=0;
         this.gold = 0;
         this.skills = [
             { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
-            { tag: 'curse', name:'저주',  maxCooltime: 2000, cooltime: 0, unlock: false, mp: 20 },
-            { tag: 'forceConv', name:'개종',  maxCooltime: 4000, cooltime: 0, unlock: false, mp: 50 }
+            { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 },
+            { tag: 'forceConv', name:'개종',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 }
         ];
         this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
             mp:0, maxMp:0,
@@ -58,8 +58,8 @@ class GameScene extends Phaser.Scene {
             ],
             'magichall': [
                 { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`},
-                { tag:'curse', name: '저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
-                { tag:'forceConv', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 20, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
+                { tag:'curse', name: '저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 25, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
+                { tag:'forceConv', name: '개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
@@ -81,7 +81,7 @@ class GameScene extends Phaser.Scene {
     create() {
         // 씬이 생성된 고유 ID 생성 (랜덤값)
         this.instanceId = Math.floor(Math.random() * 1000);
-
+        this.saveLoadScene = this.scene.get("SaveLoadScene");
         
 
        this.isGameOver=false;
@@ -168,8 +168,6 @@ class GameScene extends Phaser.Scene {
         this.cathedral.setVisible(false);
         
         
-        //웨이브 시작
-        //this.waveStart();
 
         // 입력 이벤트 설정
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
@@ -285,7 +283,7 @@ class GameScene extends Phaser.Scene {
             witchCost:this.stat.witchCost,
             witchDeath:0,
 
-            garrisonLoss:0
+            garrisonLoss:''
         };
         this.stat.unitPer = 0; // 유닛 제거 확률 초기화
 
@@ -398,7 +396,7 @@ class GameScene extends Phaser.Scene {
                 mob.damage = mobData.damage || 1;
                 mob.score = mobData.score || 2;
                 mob.hp = mobData.hp || 1;
-                mob.range = 550;
+                mob.range = 500;
                 mob.killUnit = 0.1; // 공격 시 때 10% 확률로 유닛 제거
                 mob.fireanime = `mob${mobData.mobNumber}_fire`;
                 mob.rangeWp ='arrow';
@@ -412,6 +410,7 @@ class GameScene extends Phaser.Scene {
                 mob.damage = mobData.damage || 3;
                 mob.score = mobData.score || 3;
                 mob.hp = mobData.hp || 4;
+                mob.range = 20;
                 mob.killUnit = 0.3; // 공격 시 때 30% 확률로 유닛 제거
                 mob.setScale(2);
                 mob.y -= 96; // 크기가 커졌으니 살짝 띄워줌
@@ -575,19 +574,22 @@ class GameScene extends Phaser.Scene {
         
         if(!item.unlock){
             if(this.gold < item.cost){
-                console.log("골드가 부족합니다.");
+                this.saveLoadScene.showOkPopup('💰골드가 부족합니다');
+                //console.log("골드가 부족합니다.");
                 return;
             }
             
         }
         // 1. 만렙 체크
         if (item.level >= item.maxLevel) {
-            console.log("이미 최대 레벨입니다.");
+            this.saveLoadScene.showOkPopup('이미 최대 레벨입니다');
+            //console.log("이미 최대 레벨입니다.");
             return;
         }
         if(item.manPower !=null){
             if(this.stat.manPower <=0){
-                console.log("인구수가 부족합니다.");
+                this.saveLoadScene.showOkPopup('👥인구수가 부족합니다');
+                //console.log("인구수가 부족합니다.");
                 return;
             }
             this.stat.manPower--; // 인구수 1 감소
@@ -595,7 +597,8 @@ class GameScene extends Phaser.Scene {
         }
         // 3. 비용 체크 (예시: this.gold가 있다고 가정)
         if (this.gold < item.cost) {
-            console.log("골드가 부족합니다.");
+                this.saveLoadScene.showOkPopup('💰골드가 부족합니다');
+                //console.log("골드가 부족합니다.");
             return;
         }
 
@@ -713,9 +716,22 @@ class GameScene extends Phaser.Scene {
             //console.log( ` ${this.stat.unitPer>removeCount? '유닛제거 - ':''}${Math.floor(this.stat.unitPer*100)/100} : ${removeCount}`)
             if(this.stat.unitPer - this.stat.armor*0.04  >removeCount ){
                 this.stat.unitPer = 0; // 제거가 발생하면 확률 초기화
+                if(this.data.garrisonLoss =='archer'){
+                    if(this.data.witch>0){
+                        this.data.garrisonLoss ='witch';
+                    }
+                    
+                }else{
+                    if(this.stat.archer>0){
+                        this.data.garrisonLoss = 'archer';
+                    }
+                    
+                }
+
                 const uiScene = this.scene.get('UIScene');
 
-                if(this.stat.archer > 0){   
+                if(this.stat.archer > 0 && this.data.garrisonLoss =='archer'){   
+                    console.log(`💀🏹 궁수 사망 (${this.stat.archer}->${this.stat.archer-1})` );
                     this.stat.archer --; // 궁병 제거
                     this.data.archerDeath++; 
                     if(this.stat.archer < 0) this.stat.archer = 0; // 음수 방지
@@ -749,11 +765,12 @@ class GameScene extends Phaser.Scene {
                 }
 
                 //마법사 제거 로직도 여기에 추가 가능
-                if(this.stat.witch>0){
+                if(this.stat.witch>0 && this.data.garrisonLoss =='witch'){
+                    console.log(`💀🪄 마녀 사망 (${this.stat.witch} -> ${this.stat.witch-1})`);
                     this.stat.witch--;
                     this.data.witchDeath++;
                     if(this.stat.witch<0) this.stat.witch=0;//음수방지
-                    uiScene.shakeMpBar();
+                    uiScene.shakeMpBar(20);
                 }
                 this.registry.set('stat', this.stat);
             }
@@ -1079,9 +1096,11 @@ class GameScene extends Phaser.Scene {
 
         // 2. 만약 장전된 스킬이 있다면?
         if (activeSkill) {
+            
             // 스킬 데이터 찾기
             const skill = uiScene.skills.find(s => s.tag === activeSkill);
-            
+            if(skill.cooltime>0) {uiScene.shakeMpBar(); return ;}//쿨이 돌고 있다면 무시
+
             // 마나(MP) 시스템이 있다면 체크 (예시)
             if (this.stat.mp < skill.mp) { uiScene.shakeMpBar(); console.log("MP가 부족합니다!"); return; }
             this.stat.mp -= skill.mp;
@@ -1112,7 +1131,7 @@ class GameScene extends Phaser.Scene {
             skill.cooltime = skill.maxCooltime;
 
             // 4. 📴 스킬을 사용했으니 장전 상태(토글)를 해제하여 평소 상태로 돌립니다.
-            uiScene.deactivateAllSkills();
+            //uiScene.deactivateAllSkills();
 
         } 
         // 3. 장전된 스킬이 없다면 (activeSkill === null)
@@ -1209,6 +1228,10 @@ class GameScene extends Phaser.Scene {
             data.stat.archerCost = this.stat.archerCost;
 
             if(data.skills ==null) data.skills = this.skills;
+            for(let i =0 ; i< data.skills.length ; i++){
+                data.skills[i].maxCooltime = this.skills[i].maxCooltime;
+                data.skills[i].mp = this.skills[i].mp;
+            }
 
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
             this.wave = data.wave || this.wave;

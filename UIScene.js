@@ -22,12 +22,8 @@ class UIScene extends Phaser.Scene {
         const { width, height } = this.cameras.main;
 
         // 1. 일시정지 화면 그룹
-        this.pauseMenu = this.add.container(0, 0).setVisible(this.isPaused);
-        const pauseBg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
-        const pauseText = this.add.text(width/2, height/2, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
-        const pauseInfoText = this.add.text(width/2,height/2+60, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
-        this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
-        this.pauseMenu.setDepth(20); // 다른 UI 요소들보다 위에 표시
+        this.pauseMenu;
+        this.drawPauseMenu();
 
         // 2. 게임오버 화면 그룹
         this.gameOverMenu = this.add.container(0, 0).setVisible(false);
@@ -295,7 +291,7 @@ class UIScene extends Phaser.Scene {
         this.manaTxt.setText(`${ Math.floor(this.stat.mp)}/${this.stat.maxMp}`);
 
     }
-    shakeMpBar(){
+    shakeMpBar(shakeIntensity = 8){
         // 1. 쉐이크 효과를 적용할 그래픽스 객체
         if(this.manabarshakeTween && this.manabarshakeTween.isActive()){
             return;
@@ -303,11 +299,7 @@ class UIScene extends Phaser.Scene {
         const graphics = this.manaBar;
         const originalX = graphics.x;
         const originalY = graphics.y;
-
-        // 흔들림 강도 (픽셀 단위)
-        const shakeIntensity = 8;
-        
-
+      
         this.manabarshakeTween = this.tweens.add({
             targets: graphics,
             // 최초 목적지를 랜덤하게 잡습니다.
@@ -428,8 +420,78 @@ class UIScene extends Phaser.Scene {
             this.nextWaveBtn.setText(`다음 웨이브${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
         }
     }
+    drawPauseMenu(){
+        const { width, height } = this.cameras.main;
+        this.pauseMenu = this.add.container(0, 0).setVisible(this.isPaused);
+        const pauseBg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
+        const pauseText = this.add.text(width/2, height/2 -50, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
+        const pauseInfoText = this.add.text(width/2,height/2-10, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
+        this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
 
-    showResultWindow( data , immeditely =1) {
+         //전체화면버튼
+        const fullscBt = this.makeButton(200,50, width/2, 430, '🖥️Fullscreen');
+        fullscBt.on('pointerdown', () => {
+            if (this.scale.isFullscreen) {
+                this.scale.stopFullscreen(); // 전체화면 끄기
+                fullscBt.text.setText('🖥️Fullscreen');
+            } else {
+                this.scale.startFullscreen(); // 전체화면 켜기
+                fullscBt.text.setText('❌Exit Full');
+            }
+        });
+
+        //재시작버튼
+        const restartBt = this.makeButton(200,50,width/2,500, 'Restart');
+        restartBt.on('pointerdown', () => {
+
+            this.saveLoadScene.showConfirmPopup( '정말로 재시작하겠습니까?\n(페이지를 새로고침 합니다)',
+                
+                () => {
+                    this.restartGame();
+                }
+            )
+            
+        });
+
+        this.pauseMenu.add( [fullscBt,restartBt] );
+        
+        this.pauseMenu.setDepth(200); // 다른 UI 요소들보다 위에 표시
+
+    }
+    makeButton(sizeX, sizeY, posX, posY, text) {
+        // 1️⃣ 박스와 텍스트를 하나로 묶어줄 '컨테이너'를 생성합니다.
+        // 💡 팁: 컨테이너의 기준 좌표를 posX, posY로 잡으면 관리하기 편합니다.
+        const buttonContainer = this.add.container(posX, posY);
+
+        // 2️⃣ 박스를 생성합니다. 
+        // 💡 컨테이너 내부로 들어갈 오브젝트들은 좌표를 중심점(0, 0) 기준으로 잡아야 정중앙에 배치됩니다.
+        const box = this.add.rectangle(0, 0, sizeX, sizeY, 0x444444)
+            .setStrokeStyle(2, 0xffffff)
+            .setOrigin(0.5);
+
+        // 3️⃣ 텍스트를 생성합니다. (박스 한가운데 오도록 0, 0 지정)
+        const txt = this.add.text(0, 0, text, {
+            fontSize: '24px',
+            fill: '#ffffff',
+            padding: { x: 5, y: 5 }
+        }).setOrigin(0.5);
+
+        // 4️⃣ 컨테이너 바구니안에 박스와 텍스트를 차례대로 집어넣습니다.
+        buttonContainer.add([box, txt]);
+
+        // 5️⃣ 컨테이너에 직접 마우스 이벤트를 걸 수 있도록 설정합니다.
+        // (자식인 box의 히트 영역을 그대로 컨테이너 크기로 가져옵니다.)
+        buttonContainer.setSize(sizeX, sizeY);
+        buttonContainer.setInteractive({ useHandCursor: true });
+
+        // 6️⃣ 🌟 딱 '하나'의 컨테이너 객체만 리턴합니다!
+        // 외부에서 쉽게 텍스트나 박스에 접근할 수 있도록 커스텀 프로퍼티로 묶어서 보냅니다.
+        buttonContainer.box = box;
+        buttonContainer.text = txt;
+
+        return buttonContainer;
+    }
+    showResultWindow( data ) {
         this.setSkillUIVisibility(false);
         this.nextStageBtn.setVisible(false); // 숫자가 올라가는 동안 버튼은 숨김
         // 1. 폰트 스타일 설정 (테두리를 주어 가독성 확보)
@@ -475,43 +537,43 @@ class UIScene extends Phaser.Scene {
         console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
 
         // 0.4초 뒤: 쓰러트린 적 표시
-        this.time.delayedCall(400 *immeditely, () => {
+        this.time.delayedCall(400 , () => {
             txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
-        this.time.delayedCall(700 *immeditely, () => {
+        this.time.delayedCall(700 , () => {
             txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         // 0.8초 뒤: 획득한 골드 표시
-        this.time.delayedCall(1200 *immeditely, () => {
+        this.time.delayedCall(1200 , () => {
             txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
         });
 
         // 1.2초 뒤: 유지비 표시
-        this.time.delayedCall(1600 *immeditely, () => {
+        this.time.delayedCall(1600, () => {
             txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
         });
-        this.time.delayedCall(2000 *immeditely, () => {
+        this.time.delayedCall(2000 , () => {
             txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
         });
         //게리슨 사망자 표시
-        this.time.delayedCall(2600 *immeditely, () =>{
+        this.time.delayedCall(2600 , () =>{
             txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
         
         });
 
 
         // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
-        this.time.delayedCall(3200 *immeditely, () => {
+        this.time.delayedCall(3200 , () => {
             // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
             const scoreCounter = { value: 0 };
             this.tweens.add({
                 targets: scoreCounter,
                 value: data.earnGold - (data.archerCost*data.archer) - (data.witchCost*data.witch), // 최종 금액
-                duration:  (immeditely>0? 1200: 100), // 1200ms 동안 숫자가 드르륵 올라감
+                duration:  1200,// 1200ms 동안 숫자가 드르륵 올라감
                 ease: 'Power1',
                 onUpdate: () => {
                     txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
@@ -553,8 +615,7 @@ class UIScene extends Phaser.Scene {
                                         if( scoreCounter.value >=0){ //this.gold
                                             //다음스테이지
                                             this.garrisonLoseEvent.remove();
-                                            this.nextStageBtn.setVisible(true); 
-                                            this.nextStagetTxt.setVisible(true);
+                                            this.nextStageBtn.setVisible(true);
 
                                             this.tweens.add({
                                                 targets: txtTotal,
@@ -574,7 +635,6 @@ class UIScene extends Phaser.Scene {
                     }else{
                         //다음 스테이지
                          this.nextStageBtn.setVisible(true); 
-                        this.nextStagetTxt.setVisible(true);
 
                         this.tweens.add({
                             targets: txtTotal,
@@ -606,20 +666,8 @@ class UIScene extends Phaser.Scene {
         
 
          // 다음 스테이지 버튼
-        this.nextStageBtn = this.add.rectangle(0 , 280, 200,  60,  0x444444).setStrokeStyle(2, 0xffffff)
-                .setInteractive({ useHandCursor: true }).setOrigin(0.5);
-        this.nextStagetTxt = this.add.text(0 , 280, 'Continue', {
-            fontSize: '28px',
-            fill: '#ffffff',
-            padding: { x: 30, y: 20 }
-        })
-        .setOrigin(0.5);
-
-         /*
-         .setOrigin(0.5)
-         .setInteractive({ useHandCursor: true });
-         */
-         this.nextStageBtn.on('pointerdown', () => {
+        this.nextStageBtn = this.makeButton(200,60,0,280,'Continue');
+        this.nextStageBtn.on('pointerdown', () => {
             if(this.gold<0){
                 //음수인 경우 게임진행 불가
                 /*
@@ -644,11 +692,8 @@ class UIScene extends Phaser.Scene {
             }
             
          });
-
-         this.nextStageBtn.setVisible(false); // 초기에는 숨김
-         this.nextStagetTxt.setVisible(false);
-
-         this.resultWindow.add([this.nextStageBtn, this.nextStagetTxt ]);
+         this.nextStageBtn.setVisible(false);
+         this.resultWindow.add(this.nextStageBtn);
 
 
          this.resultWindow.setDepth(30); // 다른 UI 요소들보다 위에 표시
@@ -948,8 +993,18 @@ class UIScene extends Phaser.Scene {
     createSkillUI() {
         this.clearSkillUI();
         const { width, height } = this.cameras.main;
+        const size = 80; // 사각형 상자 크기 (60x60)
+        const size2 = 96;
+
         // 1. 데이터 베이스 참조 (스킬 리스트)
         this.skills = this.registry.get('skills');
+
+        //activeSkillBt 시전 박스
+        this.activeSkillBox = this.add.container(0,0);
+        const activeskbox = this.add.graphics();
+        activeskbox.fillStyle(0x0076d7, 1).fillRect( -size2 / 2, -size2 / 2, size2, size2);
+        this.activeSkillBox.add( activeskbox);
+
 
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
         this.activeSkillTag = null; 
@@ -966,7 +1021,7 @@ class UIScene extends Phaser.Scene {
 
             const x = startX + (index * spacing);
             const y = startY;
-            const size = 80; // 사각형 상자 크기 (60x60)
+            
 
             // 1. 🔲 기본 바탕 상자 (언제나 불투명한 은은한 흑색)
             const baseBox = this.add.graphics();
@@ -1081,18 +1136,23 @@ class UIScene extends Phaser.Scene {
             this.manaBar.setVisible(true);
             this.manaTxt.setVisible(true);
             this.stat.maxMp = this.stat.witch*10;
+            if(this.stat.mp > this.stat.maxMp) this.stat.mp = this.stat.maxMp;
+
             if(this.stat.mp < this.stat.maxMp){
                 this.stat.mp += delta * this.stat.witch*0.001;
                 if(this.stat.mp>this.stat.maxMp) this.stat.mp = this.stat.maxMp;
                 //마나 창
-                this.drawManaBar( this.manaBar);
-
             }
+            this.drawManaBar( this.manaBar);
         }else{
             this.manaBar.setVisible(false);
             this.manaTxt.setVisible(false);
         }
-       
+        if(this.activeSkillTag!=null){
+            this.activeSkillBox.setVisible(true);
+        }else{
+            this.activeSkillBox.setVisible(false);
+        }
        
         if (!this.skillUIComponents) return;
     
@@ -1106,41 +1166,58 @@ class UIScene extends Phaser.Scene {
                 const comp = this.skillUIComponents[skill.tag];
                 if (!comp) return;
                 
+                if(skill.tag == this.activeSkillTag){
+                    //지금 스킬이 액티브 스킬박스와 같다면?
+                    //console.log(comp.startX, comp.startY);
+                    this.activeSkillBox.x = comp.startX;
+                    this.activeSkillBox.y = comp.startY;
+                }
+
                 // 1️⃣ [쿨타임 상태]
                 if (skill.cooltime > 0) {
-                    skill.cooltime -= delta;
+                    const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.1 ) : 1 ; //witch의 스킬인 경우
+                    skill.cooltime -= delta * coolSpeed;
                     comp.uiState = 'cooldown'; // 상태 변경
 
-                    const remainingSec = (skill.cooltime / 1000).toFixed(1);
-                    comp.text.setText(`${remainingSec}s\nCOOL`);
+                    const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1)
+                    const displaySec = remainingSec > 0 ? remainingSec : '0.0';
+                    comp.text.setText(`${displaySec}s\nCOOL`);
                     comp.text.setFill('#ff4d4d');
 
                     const progress = skill.cooltime / skill.maxCooltime; 
                     comp.coolShadow.clear();
                     comp.coolShadow.fillStyle(0x000000, 0.6); 
 
+                    // 12시 방향 시작 (-90도)
                     const startAngle = Phaser.Math.DegToRad(-90);
-                    const endAngle = startAngle + Phaser.Math.DegToRad(360 * progress);
 
-                    comp.coolShadow.slice(comp.startX, comp.startY, comp.size * 1.5, startAngle, endAngle, false);
+                    // 🌟 더하기(+) 대신 빼기(-)를 사용해 반시계 방향으로 각도를 도출합니다.
+                    const endAngle = startAngle - Phaser.Math.DegToRad(360 * progress);
+
+                    comp.coolShadow.clear();
+                    comp.coolShadow.fillStyle(0x000000, 0.6); 
+
+                    // 🌟 마지막 인자(Anticlockwise)를 false에서 true로 변경합니다.
+                    comp.coolShadow.slice(comp.startX, comp.startY, comp.size * 1.5, startAngle, endAngle, true);
                     comp.coolShadow.fillPath();
 
                     comp.baseBox.lineStyle(2, 0xff4d4d, 0.8);
                     comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
 
                     if (this.activeSkillTag === skill.tag) {
-                        this.activeSkillTag = null;
+                        //this.activeSkillTag = null;
                     }
                 } 
                 // 2️⃣ [대기 상태] 쿨타임이 아닐 때
                 else {
-                    if (this.activeSkillTag === skill.tag) return;
+                   // if (this.activeSkillTag === skill.tag) return;
 
                     // ❌ [마나 부족] 
                     if (currentMp < skill.mp) {
                         // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
-                        if (comp.uiState === 'low-mp') return;
                         
+                        if (comp.uiState === 'low-mp') return;
+                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
                         comp.uiState = 'low-mp'; // 상태 확정
                         comp.text.setText(`${skill.name}\n${skill.mp}MP`);
                         
@@ -1150,7 +1227,7 @@ class UIScene extends Phaser.Scene {
                         comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
                         comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
 
-                        comp.text.setFill('#555555');
+                        comp.text.setFill('#ff4d4d');
                     } 
                     // ⭕ [사용 가능] 마나가 충분할 때
                     else {
@@ -1174,70 +1251,8 @@ class UIScene extends Phaser.Scene {
             });
         
     }
-    /**
-     * 💡 언제든 재활용할 수 있는 미니멀 확인 팝업창
-     * @param {string} message - 팝업창에 표시할 안내 문구
-     * @param {function} onConfirm - [ YES ]를 눌렀을 때 실행할 함수
-     */
-    showConfirmPopup(message, onConfirm, onCancel =null) {
-        // 1. 이미 팝업이 떠 있다면 중복 생성 방지
-        if (this.confirmPopup) return;
+    
 
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // 2. 팝업 컨테이너 생성
-        this.confirmPopup = this.add.container(0, 0);
-        this.confirmPopup.setDepth(50);
-
-        // 3. 뒷배경 클릭 방지용 오버레이
-        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
-        overlay.setInteractive();
-        
-        const box = this.add.rectangle(width / 2, height / 2,  420,200, 0x000000, 1).setStrokeStyle(2, 0xffffff);
-        // 4. 타이포그래피 스타일
-        const textStyle = {
-            fontFamily: 'Impact, Arial Black, sans-serif',
-            fontSize: '28px',
-            fill: '#ffffff',
-            stroke: '#111111',
-            strokeThickness: 5,
-            align: 'center'
-        };
-
-        // 전달받은 message로 텍스트 생성
-        const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
-
-        // 버튼 생성
-        const yesButton = this.add.text(width / 2 - 80, height * 0.58, '[ YES ]', { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
-            .setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-        const noButton = this.add.text(width / 2 + 80, height * 0.58, '[ NO ]', { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
-            .setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-        this.confirmPopup.add([overlay, box, titleText, yesButton, noButton]);
-
-        // 호버 효과
-        yesButton.on('pointerover', () => yesButton.setScale(1.1));
-        yesButton.on('pointerout', () => yesButton.setScale(1.0));
-        noButton.on('pointerover', () => noButton.setScale(1.1));
-        noButton.on('pointerout', () => noButton.setScale(1.0));
-
-        // 🟢 YES 클릭 시
-        yesButton.on('pointerdown', () => {
-            if (onConfirm) onConfirm(); // 💡 전달받은 핵심 기능을 여기서 실행!
-            
-            this.confirmPopup.destroy();
-            this.confirmPopup = null;
-        });
-
-        // 🔴 NO 클릭 시
-        noButton.on('pointerdown', () => {
-            if(onCancel) oncancel();
-            this.confirmPopup.destroy();
-            this.confirmPopup = null;
-        });
-    }
     // 4. 다시 시작 로직 함수
     restartGame() {
         // 완전 재시작 
