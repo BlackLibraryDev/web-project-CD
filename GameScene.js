@@ -29,9 +29,9 @@ class GameScene extends Phaser.Scene {
         this.score=0;
         this.gold = 0;
         this.skills = [
-            { tag: 'aimShot', name:'일점사', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
+            { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
             { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 },
-            { tag: 'forceConv', name:'개종',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 }
+            { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 }
         ];
         this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
             mp:0, maxMp:0,
@@ -46,7 +46,7 @@ class GameScene extends Phaser.Scene {
         };
         this.upgrades = {
             'cathedral': [
-                { tag:'conversion', name: '👥개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
+                { tag:'conversion', name: '🙏개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
                 { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
             ],
             
@@ -59,7 +59,7 @@ class GameScene extends Phaser.Scene {
             'magichall': [
                 { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`},
                 { tag:'curse', name: '⚡저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 25, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
-                { tag:'forceConv', name: '⚡개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
+                { tag:'forceConv', name: '⚡현혹술', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
@@ -119,7 +119,7 @@ class GameScene extends Phaser.Scene {
 
         // 1. 바닥(Ground)을 정적 그룹으로 생성
         const platforms = this.physics.add.staticGroup(); 
-        this.ground = this.add.rectangle(config.width / 2, config.height - this.groundHeight / 2, config.width, this.groundHeight, 0x666666).setAlpha(0);;
+        this.ground = this.add.rectangle(config.width / 2, config.height - this.groundHeight / 2 +10, config.width, this.groundHeight-10, 0x666666).setAlpha(0);;
         platforms.add(this.ground); // 이제 .add()가 작동합니다.
 
         this.mobs = this.physics.add.group();
@@ -142,27 +142,29 @@ class GameScene extends Phaser.Scene {
                 this.startCathedralConvertion(mob);
                 }
         });
-        //성채 이미지
-        this.drawCastleImage();
+        
 
         //궁수
-        this.archer = this.add.sprite(this.castleX, config.height - this.groundHeight-120, 'archer').setDisplaySize(128,128);
-        this.archer.setDepth(2);
+        this.archer = this.add.sprite(this.castleX-10, config.height - this.groundHeight-120, 'archer').setDisplaySize(128,128);
+        this.archer.setDepth(2).setOrigin(0.5);
         this.archer.setVisible(false);
         this.archerText = this.add.text(this.castleX, config.height- this.groundHeight-200, `궁수 x${this.stat.archer}`, 
-                {   fontSize: '24px', 
+                {   fontSize: '28px', 
                     fill: '#2ecc71',
                     padding: { x: 3, y: 3 },
                     fontStyle: 'bold',
                     stroke: '#000000',
-                    strokeThickness: 2
+                    strokeThickness: 4
                 }).setOrigin(0.5); 
         this.archerText.setVisible(false);
         this.archerText.setDepth(4);
+        
+        //성채 이미지
+        this.drawCastleImage();
 
         //성당 고문실
 
-        this.cathedral = this.add.sprite(this.castleX-50, config.height- this.groundHeight-60, 'cathedral').setDisplaySize(128,128); 
+        this.cathedral = this.add.sprite(this.castleX-50, config.height- this.groundHeight, 'cathedral').setDisplaySize(128,128); 
         
         this.cathedral.setDepth(5);
         this.cathedral.setVisible(false);
@@ -214,8 +216,20 @@ class GameScene extends Phaser.Scene {
         
     }
     drawCastleImage(){
-        this.castle = this.add.image(this.castleX, config.height- this.groundHeight-70, 'castle1').setDisplaySize(144,144);
-        this.castle.setDepth(3);
+        if (this.castle) {
+            this.castle.destroy();
+        } 
+        this.castle = this.add.sprite(this.castleX, config.height- this.groundHeight, 'castleSprite').setDisplaySize(144,144);
+        
+        const num = Phaser.Math.Clamp(this.stat.armor,0,2);
+        this.castle.anims.play(`castle${num}`);
+        this.castle.setDepth(3).setOrigin(0.5,0.9);
+        if(num>=2){
+            this.castle.setDisplaySize(192,192).setOrigin(0.5,0.9);
+        }
+        
+        this.archer.y = this.castle.y - this.castle.height;
+        this.archerText.y = this.castle.y - this.castle.height-80;
     }
     setBgImage(name, isDark =false){
         this.bg = this.add.image(config.width/2, config.height/2, `${name}${isDark?'_dark':''}`).setDisplaySize(config.width, config.height);
@@ -223,7 +237,7 @@ class GameScene extends Phaser.Scene {
     }
     setCathedral(){
         if(this.getUpgradeItem('cathedral','conversion').unlock){
-            this.cathedral.setVisible(true);
+            this.cathedral.setVisible(true).setOrigin(0.5,0.9);
         }
         this.cathedralTimer = null;
 
@@ -233,7 +247,7 @@ class GameScene extends Phaser.Scene {
         if(!this.getUpgradeItem('cathedral','conversion').unlock) return; // 개종이 해금되지 않았다면 실행하지 않음
         if(this.cathedralTimer) return; // 이미 진행 중이라면 중복 실행 방지
 
-        this.createBeamEffect(this.cathedral.x+30, this.cathedral.y+50, this.stat.convertionTime , '0xffcc00', 60);
+        this.createBeamEffect(this.cathedral.x+30, this.cathedral.y, this.stat.convertionTime , '0xffcc00', 60);
         this.updateScore(target.score);
         target.destroy();
 
@@ -416,9 +430,9 @@ class GameScene extends Phaser.Scene {
                 mob.hp = mobData.hp || 4;
                 mob.range = 20;
                 mob.killUnit = 0.3; // 공격 시 때 30% 확률로 유닛 제거
-                mob.setScale(2);
+                mob.setScale(1.8);
                 mob.y -= 96; // 크기가 커졌으니 살짝 띄워줌
-                mob.body.setOffset(0, Phaser.Math.Between(0, 15)); // 히트박스 위치 조정
+                mob.body.setOffset(0, Phaser.Math.Between(0, 10)); // 히트박스 위치 조정
             break;
         }
     }
@@ -618,7 +632,7 @@ class GameScene extends Phaser.Scene {
             const unlockSk = this.skills.find(sk =>sk.tag == item.tag);
             if(unlockSk !=null && unlockSk.unlock ==false){
                 unlockSk.unlock = true;
-                console.log(this.skills);
+                //console.log(this.skills);
                 this.registry.set('skills',this.skills);
                 uiScene.createSkillUI();
             }
@@ -639,7 +653,7 @@ class GameScene extends Phaser.Scene {
                 this.stat.armor = item.level;
                 this.getUpgradeItem('stronghold','wallFix').cost = this.stat.armor;
                 this.getUpgradeItem('stronghold','wallFix_10').cost = this.stat.armor*10;
-                
+                this.drawCastleImage();
                 //console.log(this.castleArmor);
                 break;
             case 'maxCastleHp':
@@ -1235,6 +1249,8 @@ class GameScene extends Phaser.Scene {
             for(let i =0 ; i< data.skills.length ; i++){
                 data.skills[i].maxCooltime = this.skills[i].maxCooltime;
                 data.skills[i].mp = this.skills[i].mp;
+                data.skills[i].name = this.skills[i].name;
+                //data.skills[i].unlock = this.skills[i].unlock;//테스트
             }
 
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
@@ -1256,6 +1272,7 @@ class GameScene extends Phaser.Scene {
                         }else{
                             arr[i].info = org[i].info;
                             arr[i].name = org[i].name;
+                            //arr[i].unlock = org[i].unlock;//테스트
                             if(arr[i].unlock==false){ arr[i].level =0}
                         }
                     

@@ -12,8 +12,9 @@ class UIScene extends Phaser.Scene {
         // 씬이 생성된 고유 ID 생성 (랜덤값)
         this.saveLoadScene = this.scene.get('SaveLoadScene');
         this.saveName = this.saveLoadScene.loadGameData;
-        console.log(`saveName : ${this.saveName}`);
+        //console.log(`saveName : ${this.saveName}`);
 
+        this.keyBind = ['A', 'S', 'D', 'F'];
 
         this.stat = this.registry.get('stat');
         this.isPaused=false;    
@@ -60,10 +61,38 @@ class UIScene extends Phaser.Scene {
         this.input.keyboard.on('keydown', (event) => {
             // 아무 키나 눌렀을 때 실행될 코드
             console.log(`눌린 키: ${event.key}, 키 코드: ${event.code}`);
+            /*
+            눌린 키: 1, 키 코드: Digit1
+            눌린 키: 2, 키 코드: Digit2
+            눌린 키: 3, 키 코드: Digit3
+            눌린 키: a, 키 코드: KeyA
+            눌린 키: s, 키 코드: KeyS
+            눌린 키: d, 키 코드: KeyD
+            */
+            
+            if(event.code == `Digit1` || event.code == `KeyA`){
+                if(this.pressKey(0)) return;
+            }
+            if(event.code == `Digit2` || event.code == `KeyS`){
+                if(this.pressKey(1)) return;
+            }
+            if(event.code == `Digit3` || event.code == `KeyD`){
+                if(this.pressKey(2)) return;
+            }
+            if(event.code == `Digit4` || event.code == `KeyF`){
+                if(this.pressKey(3)) return;
+            }
+
+
             if(!this.isPaused){
                 this.togglePause();
             }else if(event.code =='Escape'){
-                this.togglePause();
+
+                if(this.saveLoadScene.howToWindow != null && this.saveLoadScene.howToWindow.visible){
+                    this.saveLoadScene.drawHowToList(false);
+                }else{
+                     this.togglePause();
+                }
             }
         });
 
@@ -245,7 +274,30 @@ class UIScene extends Phaser.Scene {
 
         
     }
-     
+     pressKey(num){
+        
+        const pressKey = Object.keys(this.skillUIComponents)[num];
+        console.log(pressKey);
+        if(pressKey!=null){
+            if(this.activeSkillTag != pressKey){
+                this.activeSkillTagHold =false;
+                this.activeSkillTag = pressKey;
+                return true;
+            }
+            else{
+                if(this.activeSkillTagHold ==true){
+                
+                    this.activeSkillTagHold=false;
+                    this.deactivateAllSkills();
+                }else{
+                    this.activeSkillTagHold=true;
+                }
+                return true;
+            }
+        }else{
+            return false;
+        }
+    }
     /////////////////////////////////////////////////////////////////////////////////
     nextGameStart(){
         this.upgradeWindow.setVisible(false);
@@ -424,12 +476,19 @@ class UIScene extends Phaser.Scene {
         const { width, height } = this.cameras.main;
         this.pauseMenu = this.add.container(0, 0).setVisible(this.isPaused);
         const pauseBg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
-        const pauseText = this.add.text(width/2, height/2 -50, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
-        const pauseInfoText = this.add.text(width/2,height/2-10, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
+        const pauseText = this.add.text(width/2, height/2 -150, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
+        const pauseInfoText = this.add.text(width/2,height/2-110, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
         this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
 
+
+        const howToBt = this.makeButton(200,50, width/2, 330, 'How to Play');
+        howToBt.on('pointerdown', () => {
+             this.saveLoadScene.drawHowToList();
+        });
+
+
          //전체화면버튼
-        const fullscBt = this.makeButton(200,50, width/2, 430, '🖥️Fullscreen');
+        const fullscBt = this.makeButton(200,50, width/2, 400, '🖥️Fullscreen');
         fullscBt.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen(); // 전체화면 끄기
@@ -441,7 +500,7 @@ class UIScene extends Phaser.Scene {
         });
 
         //재시작버튼
-        const restartBt = this.makeButton(200,50,width/2,500, 'Restart');
+        const restartBt = this.makeButton(200,50,width/2,470, 'Restart');
         restartBt.on('pointerdown', () => {
 
             this.saveLoadScene.showConfirmPopup( '정말로 재시작하겠습니까?\n(페이지를 새로고침 합니다)',
@@ -453,7 +512,7 @@ class UIScene extends Phaser.Scene {
             
         });
 
-        this.pauseMenu.add( [fullscBt,restartBt] );
+        this.pauseMenu.add( [howToBt, fullscBt,restartBt] );
         
         this.pauseMenu.setDepth(200); // 다른 UI 요소들보다 위에 표시
 
@@ -492,6 +551,7 @@ class UIScene extends Phaser.Scene {
         return buttonContainer;
     }
     showResultWindow( data ) {
+        this.isPaused= true;
         this.setSkillUIVisibility(false);
         this.nextStageBtn.setVisible(false); // 숫자가 올라가는 동안 버튼은 숨김
         // 1. 폰트 스타일 설정 (테두리를 주어 가독성 확보)
@@ -909,6 +969,7 @@ class UIScene extends Phaser.Scene {
     // 일시정지 버튼을 눌렀을 때
     togglePause() {
         if(this.upgradeWindow.visible){return}//업그레이드 중에는 일시정지 토글 안되게
+        if(this.resultWindow.visible){return}//결과창 호출 중에는 일시정지 토글 안되게
 
         this.isPaused = !this.isPaused;
         this.pauseMenu.setVisible(this.isPaused);
@@ -932,8 +993,11 @@ class UIScene extends Phaser.Scene {
      */
     setSkillUIVisibility(isVisible) {
         if (!this.skillUIComponents) return;
-        //this.manaBar.setVisible(isVisible);
-        //this.manaTxt.setVisible(isVisible);
+        this.manaBar.setVisible(isVisible);
+        this.manaTxt.setVisible(isVisible);
+        this.holdSkillTxt.setVisible(isVisible);
+        this.holdSkillBt.setVisible(isVisible);
+        this.activeSkillBox.setVisible(isVisible);
 
         Object.keys(this.skillUIComponents).forEach(tag => {
             const comp = this.skillUIComponents[tag];
@@ -947,6 +1011,8 @@ class UIScene extends Phaser.Scene {
                 
                 // 3. 중앙 스킬 텍스트 글씨 숨김/보임
                 if (comp.text) comp.text.setVisible(isVisible);
+
+                if (comp.keytext) comp.keytext.setVisible(isVisible);
 
                 // 💡 [핵심] 삐져나감을 막아주던 사각형 마스크 틀 자체도 함께 숨겨야 잔상이 안 남습니다!
                 if (comp.maskGraphics) comp.maskGraphics.setVisible(isVisible);
@@ -969,6 +1035,7 @@ class UIScene extends Phaser.Scene {
                 if (comp.coolShadow) comp.coolShadow.destroy(); // 쿨타임 그림자 제거
                 if (comp.maskGraphics) comp.maskGraphics.destroy(); // 사각형 마스크 제거
                 if (comp.text) comp.text.destroy();             // 텍스트 객체 제거
+                if (comp.keytext) comp.keytext.destroy();             // 텍스트 객체 제거
             }
         });
 
@@ -1003,6 +1070,14 @@ class UIScene extends Phaser.Scene {
         activeskbox.fillStyle(0x0076d7, 1).fillRect( -size2 / 2, -size2 / 2, size2, size2);
         this.activeSkillBox.add( activeskbox);
 
+        //스킬시전 안내 텍스트
+        this.holdSkillTxt = this.add.text(width,height, 'double tab \nto keep skill',
+            {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#3499ff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'right'}).setOrigin(1,0.4);
         //스킬시전 잠금
         this.holdSkillBt = this.add.container(0,0).setDepth(5);
         const holdskillbox = this.add.graphics();
@@ -1017,38 +1092,6 @@ class UIScene extends Phaser.Scene {
             align: 'center'}).setOrigin(0.5);
         this.holdSkillBt.add([holdskillbox, holdskllTxt0]); //, holdskllTxt
 
-        // 🌟 [핵심 해결책] 컨테이너에게 정확한 클릭 영역(HitArea)을 주입합니다.
-        
-        /*
-        this.holdSkillBt.setInteractive(
-            new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size), // 1. 상자 크기와 동일한 가상 사각형
-            Phaser.Geom.Rectangle.Contains                              // 2. 사각형 내부 판정 콜백 함수
-        );
-
-        // 마우스 커서 손모양 변경은 따로 설정해 줍니다.
-        this.holdSkillBt.input.cursor = 'pointer';
-        this.holdSkillBt.on('pointerdown', () => {
-            //토글버튼
-            if(this.activeSkillTagHold){
-                this.activeSkillTagHold=false;
-            }else{
-                this.activeSkillTagHold=true;
-            }
-            holdskllTxt.setText( ` \n${this.activeSkillTagHold}` );
-            // 🌟 [핵심] 상태에 따라 색상 분기 처리
-            if (this.activeSkillTagHold) {
-                holdskllTxt.setFill('#0076d7'); // true일 때: 활성화 느낌의 초록색
-            } else {
-                holdskllTxt.setFill('#aaaaaa'); // false일 때: 비활성화 느낌의 어두운 회색
-            }
-        });
-        // 🌟 [핵심] 상태에 따라 색상 분기 처리
-        if (this.activeSkillTagHold) {
-            holdskllTxt.setFill('#0076d7'); // true일 때: 활성화 느낌의 초록색
-        } else {
-            holdskllTxt.setFill('#aaaaaa'); // false일 때: 비활성화 느낌의 어두운 회색
-        }
-        */
         // 현재 활성화(토글 ON)된 스킬의 tag를 기억할 변수
         this.activeSkillTag = null; 
         const activatedSkills = this.skills.filter(item => item.unlock)  //배열 아이템 중 특정 변수값이 true 인 경우 getMatching('unlock',true);
@@ -1093,6 +1136,12 @@ class UIScene extends Phaser.Scene {
             // 5. 전면 글자 배치
             
             const labelText = this.add.text(x, y, `${skill.name}\n${skill.mp}MP`, fontStyle).setOrigin(0.5);
+            const keyText = this.add.text(x, y-size/2, `a`, {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'center'}).setOrigin(0.5);
 
             // 6. 모든 데이터를 바구니에 저장
             this.skillUIComponents[skill.tag] = {
@@ -1100,6 +1149,7 @@ class UIScene extends Phaser.Scene {
                 coolShadow: coolShadow,
                 maskGraphics: maskGraphics,
                 text: labelText,
+                keytext: keyText,
                 skillData: skill,
                 size: size,
                 startX: x,
@@ -1125,7 +1175,7 @@ class UIScene extends Phaser.Scene {
                     //this.deactivateAllSkills();
                 } else {
                     if (skill.cooltime > 0) return;
-                    console.log(33);
+                    //console.log(33);
                     this.deactivateAllSkills();
                     this.activeSkillTagHold= false// this.registry.get('optionData').autoSkillHold;
                     //console.log(this.registry.get('optionData').autoSkillHold);
@@ -1150,7 +1200,8 @@ class UIScene extends Phaser.Scene {
      * 모든 스킬의 불빛을 끄고 초기 비활성화 색상으로 되돌리는 함수
      */
     deactivateAllSkills() {
-        if(this.activeSkillTagHold) return; //스킬시전유지가 켜져있는경우
+        if(this.activeSkillTagHold==true) return; //스킬시전유지가 켜져있는경우
+        this.activeSkillTagHold=false;
 
         this.activeSkillTag = null;
         if (!this.skillUIComponents) return;
@@ -1210,31 +1261,45 @@ class UIScene extends Phaser.Scene {
         }
        
         if (!this.skillUIComponents) return;
+        
         const firstKey = Object.keys(this.skillUIComponents)[0];
         if (firstKey && !this.skillUIComponents[firstKey].baseBox.visible) return;
-        /*
+        
         if(firstKey){
              //console.log(this.holdSkillBt.x, this.holdSkillBt.y);
-            this.holdSkillBt.x = this.skillUIComponents[firstKey].startX - 100;
-            this.holdSkillBt.y = this.skillUIComponents[firstKey].startY;
-           
-        }*/
+            this.holdSkillTxt.x = this.skillUIComponents[firstKey].startX - 50;
+            this.holdSkillTxt.y = this.skillUIComponents[firstKey].startY;
+            this.holdSkillTxt.setVisible(true);
+        }else{
+            this.holdSkillTxt.setVisible(false);
+        }
         
         
         this.holdSkillBt.setVisible(this.activeSkillTagHold);
 
+        for(let i = 0; i<this.skills.length; i++){
+            const key =Object.keys(this.skillUIComponents)[i];
+            const comp = this.skillUIComponents[key];
+            if (!comp) break;
+            comp.keytext.setText( this.keyBind[i]);
+            if(key == this.activeSkillTag){
+                
+            }
+          
+
+        }
         this.skills.forEach(skill => {
+           // console.log(`skill:`, skill);
             const comp = this.skillUIComponents[skill.tag];
             if (!comp) return;
             
+            
             if(skill.tag == this.activeSkillTag){
                 //지금 스킬이 액티브 스킬박스와 같다면?
-                //console.log(comp.startX, comp.startY);
                 this.activeSkillBox.x = comp.startX;
                 this.activeSkillBox.y = comp.startY;
-                
-                this.holdSkillBt.x = comp.startX;
-                this.holdSkillBt.y = comp.startY;
+                  this.holdSkillBt.x = comp.startX;
+                this.holdSkillBt.y = comp.startY; 
             }
 
             // 1️⃣ [쿨타임 상태]
@@ -1245,7 +1310,7 @@ class UIScene extends Phaser.Scene {
 
                 const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1)
                 const displaySec = remainingSec > 0 ? remainingSec : '0.0';
-                comp.text.setText(`${displaySec}s\nCOOL`);
+                comp.text.setText(`${displaySec}s`);
                 comp.text.setFill('#ff4d4d');
 
                 const progress = skill.cooltime / skill.maxCooltime; 

@@ -24,6 +24,7 @@ class SaveLoadScene extends Phaser.Scene {
         this.registry.set('optionData', this.gameOption  );
 
         this.noticeData = [
+            
             { date: "2026.05.28", title: "업데이트 - 숙련된 기술(skilful skill)",
                  content: "* 집중사격(일제사)이 추가되었습니다. 모든 궁수가 적에게 집중 사격합니다\n* 마나 및 마녀의 스킬이 추가되었습니다\n* 저주와 강제 개종이 추가되었습니다.\n* 마녀가 많을수록 마녀 회복량이 늘고 쿨다운이 감소합니다." },
             { date: "2026.05.26", title: "업데이트 - 세이브 더 월드(Save the World)", 
@@ -103,6 +104,9 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.closeNoticeWindow();
 
+
+        //howto
+        this.howToWindow = this.add.container(0, 0).setVisible(false);
         // html에서 설정한 전역 변수 가져오기 (없을 경우를 대비해 기본값 세팅)
         const currentVersion = window.GAME_VERSION || "알 수 없는 버전";
 
@@ -123,6 +127,9 @@ class SaveLoadScene extends Phaser.Scene {
         //versionTxt.setAlpha(0.5); // 너무 밝으면 방해되니 살짝 투명하게
         // 우측 하단 기준점(Origin) 정렬
     }
+
+
+    
 /**
      * 📝 공지사항 데이터를 세로 방향으로 누적하여 그려주는 함수
      */
@@ -194,7 +201,187 @@ class SaveLoadScene extends Phaser.Scene {
         // 화면 리프레시 리드로잉
         this.drawNoticeList();
     }
+    makeButton(sizeX, sizeY, posX, posY, text) {
+        // 1️⃣ 박스와 텍스트를 하나로 묶어줄 '컨테이너'를 생성합니다.
+        // 💡 팁: 컨테이너의 기준 좌표를 posX, posY로 잡으면 관리하기 편합니다.
+        const buttonContainer = this.add.container(posX, posY);
 
+        // 2️⃣ 박스를 생성합니다. 
+        // 💡 컨테이너 내부로 들어갈 오브젝트들은 좌표를 중심점(0, 0) 기준으로 잡아야 정중앙에 배치됩니다.
+        const box = this.add.rectangle(0, 0, sizeX, sizeY, 0x444444)
+            .setStrokeStyle(2, 0xffffff)
+            .setOrigin(0.5);
+
+        // 3️⃣ 텍스트를 생성합니다. (박스 한가운데 오도록 0, 0 지정)
+        const txt = this.add.text(0, 0, text, {
+            fontSize: '24px',
+            fill: '#ffffff',
+            padding: { x: 5, y: 5 }
+        }).setOrigin(0.5);
+
+        // 4️⃣ 컨테이너 바구니안에 박스와 텍스트를 차례대로 집어넣습니다.
+        buttonContainer.add([box, txt]);
+
+        // 5️⃣ 컨테이너에 직접 마우스 이벤트를 걸 수 있도록 설정합니다.
+        // (자식인 box의 히트 영역을 그대로 컨테이너 크기로 가져옵니다.)
+        buttonContainer.setSize(sizeX, sizeY);
+        buttonContainer.setInteractive({ useHandCursor: true });
+
+        // 6️⃣ 🌟 딱 '하나'의 컨테이너 객체만 리턴합니다!
+        // 외부에서 쉽게 텍스트나 박스에 접근할 수 있도록 커스텀 프로퍼티로 묶어서 보냅니다.
+        buttonContainer.box = box;
+        buttonContainer.text = txt;
+
+        return buttonContainer;
+    }
+    drawHowToList(visible =true ){
+        this.howToWindow.visible = visible;
+        this.howToWindow.removeAll(true);
+        if(!visible){
+            return;   
+        }
+        this.howToWindow = this.add.container(0, 0).setVisible(visible);
+        const { width, height } = this.cameras.main;
+
+        // 1. 🖤 뒷배경 어두운 반투명 가림막 생성
+        const bg = this.add.graphics();
+        bg.fillStyle(0x000000, 0.9);
+        bg.fillRect(0, 0, width, height);
+        bg.setDepth(1); // 배경 뎁스를 낮게 설정
+        this.howToWindow.add(bg);
+        const screenRect = new Phaser.Geom.Rectangle(0, 0, width, height);
+        bg.setInteractive(screenRect, Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', (pointer) => {
+            // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
+            //this.howToWindow.setVisible(false);
+        });
+         this.titleTxt = this.add.text(width / 2, 100, 'How to Play?', {
+            fontFamily: 'Arial Black, sans-serif',
+            fontSize: '36px',
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(2);
+        this.howToWindow.add(this.titleTxt);
+
+        const posX = 130;
+        const posY = 240;
+        const listWidth = 920;
+        
+
+        const txt0 = 
+`플레이어는 몹을 잡아다 일정 높이에서 떨어트리거나 위로 집어던져 
+중력으로 적을 처치합니다.
+
+일정 웨이브가 지나면 드래그가 되지 않는 기믹의 적이 등장합니다.
+이러한 적을 대비하게 위해 🙏개종을 통해 👥예비인력을 미리 충원하고 
+🏹궁수와 🪄마녀 같은 주둔군을 기용하여 방어를 도모합니다.
+
+게임이 끝난 후 획득한 💰재화로 업그레이드를 진행합니다.
+업그레이드는 총 4개의 카테고리가 있으며 업그레이드를 해금하거나 등급을 상승시킵니다.`
+        
+        const txt = this.add.text( posX*2, posY-20, txt0,{ 
+            fontSize: '24px', 
+            fill: '#ffffff',
+            padding: { x: 5, y: 5 },
+            lineSpacing: 10,
+            wordWrap: { width: listWidth - 20 } 
+        }).setOrigin(0,0);
+        this.howToWindow.add(txt);
+
+        const itemContainer =this.add.container(0,0).setDepth(3);
+
+        const bt1 = this.makeButton(160,50,posX, posY +0, "기본");
+        bt1.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            txt.setText(txt0);
+        });
+        this.howToWindow.add(bt1);
+
+        const bt2 = this.makeButton(160,50,posX,posY +80, "주둔군");
+        bt2.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            const cath = this.add.sprite(360,220 ,'cathedral').setDisplaySize(128,128); 
+            cath.anims.play('cathedral_fire', true);
+            itemContainer.add(cath);
+        
+            txt.setText( 
+`            ⛪대성당 에서 🙏개종을 해금하거나 🪄마녀의 ⚡현혹술 로 
+             적을 아군으로 포섭할 수 있습니다. 
+아군으로 포섭하게 되면 👥예비인력이 생깁니다.
+
+주둔군을 고용하게 되면 💸유지비가 소모되며, 💸유지비를 내지 못할 경우 주둔군을 해고하게 됩니다.`);
+        });
+        this.howToWindow.add(bt2);
+
+        const bt2_1 = this.makeButton(180,40,posX+20,posY +140, "주둔군-🏹궁수");
+        bt2_1.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            const archer = this.add.sprite(900, 330, 'archer');
+            archer.anims.play('archer_fire', true);
+            itemContainer.add(archer);
+            txt.setText( `🏹훈련소 에서 👥예비인력을 소모하여 🏹궁수를 훈련할 수 있습니다.
+🏹궁수는 일정 시간마다 화살을 쏘아 적에게 랜덤 대미지를 입힙니다.
+
+ * 계산식 : random(0~1) < 적 HP 이면 사망,
+         그외에는 random 값 만큼 적 HP 누적 감소 
+
+⚡집중사격 스킬로 처치하기 곤란한 적에게 화살을 퍼부어 제거할 수 있습니다
+`);
+        });
+        this.howToWindow.add(bt2_1);
+
+        const bt2_2 = this.makeButton(180,40,posX+20,posY +195, "주둔군-🪄마녀");
+        bt2_2.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            txt.setText( `🪄마녀의 샘 에서 👥예비인력을 소모하여 🪄마녀를 채용할 수 있습니다.
+
+🪄마녀는 마나를 이용해 적에게 특별한 마술을 구사합니다.
+🪄마녀가 많을수록 더 빠르게 마나가 차오르고 스킬의 준비시간이 짧아집니다.
+
+⚡저주 는 적을 즉사시킵니다
+⚡현혹술 은 적을 강제로 개종하여 👥예비인력으로 기용합니다.
+`);
+        });
+        this.howToWindow.add(bt2_2);
+
+        const bt3 = this.makeButton(160,50,posX,posY +270, "축성술");
+        bt3.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            const castle0 = this.add.sprite(width *0.37, 440, 'castleSprite').setScale(0.8);
+            castle0.anims.play('castle0');
+
+            const castle1 = this.add.sprite(width *0.5, 440, 'castleSprite').setScale(0.9);
+            castle1.anims.play('castle1');
+
+            const castle2 = this.add.sprite(width *0.65, 440, 'castleSprite').setScale(1);
+            castle2.anims.play('castle2');
+            itemContainer.add([castle0,castle1,castle2]);
+            txt.setText( 
+`🛡️축성술 연구 는 성벽의 재료를 변경하여 🛡️방어력을 높이고 주둔군을 보호합니다.
+ * 대미지 감소 : 적 대미지 - 🛡️방어력 (최솟값 1) 
+ * 주둔군이 입을 피해 확률 감소 : 🛡️방어력 x 4% 감소 효과
+
+
+
+
+
+
+성채보강 은 성벽의 최대 내구도를 증가시킵니다.
+
+                `);
+        });
+        this.howToWindow.add(bt3);
+
+        const xbt = this.makeButton(160,50, width/2, height-50, "닫기");
+        xbt.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+            this.drawHowToList(false);
+        });
+        this.howToWindow.add(xbt);
+
+    }
     saveWindowVisible(visible , key ='dataload'){
         
         if(this.saveWindow!=null){

@@ -4,7 +4,7 @@ class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
-        //아이콘 :  💾저장 🏰건축소',⛪대성당',🏹훈련소',🪄마술사의 샘' 💸 유지비  💀 주둔군 💰 골드 👥 개종
+        //아이콘 :  💾저장 🏰건축소',⛪대성당',🏹훈련소',🪄마녀의 샘' 💸 유지비  💀 주둔군 💰 골드 👥 개종
         // 1. 간단한 로딩 텍스트 표시
         let width = this.cameras.main.width;
         let height = this.cameras.main.height;
@@ -23,7 +23,8 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('background1', 'assets/bg1.png');
         this.load.image('background1_dark', 'assets/bg1_dark.png');
 
-        this.load.image('castle1', 'assets/castle1.png');
+        //this.load.image('castle', 'assets/castle1.png');
+        this.load.spritesheet('castleSprite','assets/castleSprite.png', { frameWidth: 128, frameHeight: 128 });
 
         this.load.spritesheet('arrow', 'assets/arrow.png', { frameWidth: 48, frameHeight: 12});
         this.load.spritesheet('archer', 'assets/archer.png', { frameWidth: 128, frameHeight: 128 });
@@ -47,6 +48,24 @@ class PreloadScene extends Phaser.Scene {
         });
     }
     create(){
+        this.anims.create({
+            key: 'castle0',
+            frames: this.anims.generateFrameNumbers('castleSprite', { start: 0, end: 1 }), // 스프라이트 시트의 0번부터 1번 프레임까지 사용
+            frameRate: 6, 
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'castle1',
+            frames: this.anims.generateFrameNumbers('castleSprite', { start: 2, end: 3 }), // 스프라이트 시트의 0번부터 1번 프레임까지 사용
+            frameRate: 6, 
+            repeat: -1
+        });
+         this.anims.create({
+            key: 'castle2',
+            frames: this.anims.generateFrameNumbers('castleSprite', { start: 4, end: 5 }), // 스프라이트 시트의 0번부터 1번 프레임까지 사용
+            frameRate: 6, 
+            repeat: -1
+        });
         this.anims.create({
             key: 'archer_fire',
             frames: this.anims.generateFrameNumbers('archer', { start: 0, end: 3 }),

@@ -48,7 +48,8 @@ class MainMenuScene extends Phaser.Scene {
         };
 
         
-        this.castle = this.add.image(width *0.7, height -200, 'castle1').setScale(1.5);
+        this.castle = this.add.sprite(width *0.7, height -220, 'castleSprite').setScale(2).setOrigin(0.5,0.65);
+        this.castle.anims.play('castle2');
 
         const platforms = this.physics.add.staticGroup(); 
         this.ground = this.add.rectangle(width / 2, height-50, width, 100, 0xffffff,0).setOrigin(0.5);
@@ -72,40 +73,50 @@ class MainMenuScene extends Phaser.Scene {
            // console.log('몹이 땅에 닿았습니다!');
             this.fadeOutAndDestroy(this, mob);
         });
-
-
+        
+        
         // 타이틀 텍스트
         this.add.text(width *0.1, height * 0.2, 'Defend your Castle', titleStyle).setDepth(2);
-        const savedData = localStorage.getItem('projectCD_data');
+        this.add.text(width *0.1, height * 0.32, 'inspire of www.xgenstudios.com/play/castle', {
+            fontFamily: 'Arial',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5
+        }).setDepth(2);
 
         // 텍스트 버튼 생성
-        const startButton = this.add.text(width *0.1, height * 0.6, '[ GAME START ]', {
-            fontFamily: 'Arial',
-            fontSize: '36px',
+        const startButton = this.add.text(width *0.1, height * 0.5, '| Continue |', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '42px',
             fill: '#ffcc00',
-            fontStyle: 'bold',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const newGameButton = this.add.text(width *0.1, height * 0.7, '[ NEW GAME ]', {
-            fontFamily: 'Arial',
-            fontSize: '36px',
+        const newGameButton = this.add.text(width *0.1, height * 0.6, '| NEW GAME |', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '42px',
             fill: '#0076d7',
-            fontStyle: 'bold',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const noticeButton = this.add.text(width *0.1, height * 0.8, '[ Notice ]', {
-            fontFamily: 'Arial',
-            fontSize: '28px',
+        const howToButton = this.add.text(width *0.1, height * 0.7, '| How to Play? |', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '32px',
             fill: '#ffffff',
-            fontStyle: 'bold',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
+        const noticeButton = this.add.text(width *0.1, height * 0.78, '| Notice |', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '32px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0).setInteractive({ useHandCursor: true });
 
         // 마우스 올렸을 때 효과
         startButton.on('pointerover', () => startButton.setColor('#ffffff').setScale(1.1));
@@ -114,11 +125,14 @@ class MainMenuScene extends Phaser.Scene {
         newGameButton.on('pointerover', () => newGameButton.setColor('#ffffff').setScale(1.1));
         newGameButton.on('pointerout', () =>  newGameButton.setColor('#ffcc00').setScale(1.0));
 
+        const savedData = localStorage.getItem('projectCD_data1');
+
         if(savedData){
             startButton.text = '[ CONTINUE ]';
         }
         // 클릭 시 인게임(GameScene)으로 전환
         startButton.on('pointerdown', () => {
+
             this.scene.get('SaveLoadScene').saveWindowVisible(true, 'dataload');
         });
         // 클릭 시 인게임(GameScene)으로 전환
@@ -126,7 +140,10 @@ class MainMenuScene extends Phaser.Scene {
             this.newGameStart()
             return;
         });
-
+        howToButton.on('pointerdown', (pointer) => {
+            this.scene.get('SaveLoadScene').drawHowToList();
+            return;
+        });
         noticeButton.on('pointerdown', (pointer) => {
             this.scene.get('SaveLoadScene').openNoticeWindow();
             return;
@@ -169,67 +186,5 @@ class MainMenuScene extends Phaser.Scene {
         this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
         this.scene.start('GameScene' ,data );
     }
-     /**
-     * 💡 언제든 재활용할 수 있는 미니멀 확인 팝업창
-     * @param {string} message - 팝업창에 표시할 안내 문구
-     * @param {function} onConfirm - [ YES ]를 눌렀을 때 실행할 함수
-     */
-    showConfirmPopup(message, onConfirm) {
-        // 1. 이미 팝업이 떠 있다면 중복 생성 방지
-        if (this.confirmPopup) return;
-
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // 2. 팝업 컨테이너 생성
-        this.confirmPopup = this.add.container(0, 0);
-        this.confirmPopup.setDepth(50);
-
-        // 3. 뒷배경 클릭 방지용 오버레이
-        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
-        overlay.setInteractive();
-        
-        const box = this.add.rectangle(width / 2, height / 2,  420,200, 0x000000, 1).setStrokeStyle(2, 0xffffff);
-        // 4. 타이포그래피 스타일
-        const textStyle = {
-            fontFamily: 'Impact, Arial Black, sans-serif',
-            fontSize: '28px',
-            fill: '#ffffff',
-            stroke: '#111111',
-            strokeThickness: 5,
-            align: 'center'
-        };
-
-        // 전달받은 message로 텍스트 생성
-        const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
-
-        // 버튼 생성
-        const yesButton = this.add.text(width / 2 - 80, height * 0.58, '[ YES ]', { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
-            .setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-        const noButton = this.add.text(width / 2 + 80, height * 0.58, '[ NO ]', { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
-            .setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-        this.confirmPopup.add([overlay, box, titleText, yesButton, noButton]);
-
-        // 호버 효과
-        yesButton.on('pointerover', () => yesButton.setScale(1.1));
-        yesButton.on('pointerout', () => yesButton.setScale(1.0));
-        noButton.on('pointerover', () => noButton.setScale(1.1));
-        noButton.on('pointerout', () => noButton.setScale(1.0));
-
-        // 🟢 YES 클릭 시
-        yesButton.on('pointerdown', () => {
-            if (onConfirm) onConfirm(); // 💡 전달받은 핵심 기능을 여기서 실행!
-            
-            this.confirmPopup.destroy();
-            this.confirmPopup = null;
-        });
-
-        // 🔴 NO 클릭 시
-        noButton.on('pointerdown', () => {
-            this.confirmPopup.destroy();
-            this.confirmPopup = null;
-        });
-    }
+    
 }
