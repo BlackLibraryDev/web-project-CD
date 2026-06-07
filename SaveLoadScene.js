@@ -6,6 +6,7 @@ class SaveLoadScene extends Phaser.Scene {
     create() {
         this.loadData = null;
 
+        this.bgm;
         
         const { width, height } = this.cameras.main;
         const backupData = localStorage.getItem( 'projectCD_data');
@@ -21,10 +22,14 @@ class SaveLoadScene extends Phaser.Scene {
         this.gameOption = null;
         this.loadOption();
         this.saveOption();
+
+        this.playBGM('bgm_main');
+
         this.registry.set('optionData', this.gameOption  );
 
         this.noticeData = [
-            
+            { date: "2026.06.07", title: "업데이트 - 침묵의 소음(silent noise)",
+                 content: "* 대부분의 효과음이 추가되었습니다\n* 파쿠리해온 BGM을 넣었습니다. 이후 교체 예정입니다\n* 스킬 창의 약간의 UI개선\n* 플레이 가이드와 환경설정 추가" },
             { date: "2026.05.28", title: "업데이트 - 숙련된 기술(skilful skill)",
                  content: "* 집중사격(일제사)이 추가되었습니다. 모든 궁수가 적에게 집중 사격합니다\n* 마나 및 마녀의 스킬이 추가되었습니다\n* 저주와 강제 개종이 추가되었습니다.\n* 마녀가 많을수록 마녀 회복량이 늘고 쿨다운이 감소합니다." },
             { date: "2026.05.26", title: "업데이트 - 세이브 더 월드(Save the World)", 
@@ -104,6 +109,8 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.closeNoticeWindow();
 
+         //option
+        this.optionWindow = this.add.container(0, 0).setVisible(false);
 
         //howto
         this.howToWindow = this.add.container(0, 0).setVisible(false);
@@ -234,6 +241,153 @@ class SaveLoadScene extends Phaser.Scene {
 
         return buttonContainer;
     }
+
+    drawOptionList(visible =true ){
+        // 1️⃣ 기존 컨테이너 및 리스너 완전 청소 (메모리 누수 방지)
+        if (this.optionWindow) {
+            this.optionWindow.destroy();
+        }
+        if(!visible){
+            return;   
+        }
+        this.optionWindow = this.add.container(0, 0).setVisible(visible);
+        const { width, height } = this.cameras.main;
+
+        // 1. 🖤 뒷배경 어두운 반투명 가림막 생성
+        const bg = this.add.graphics();
+        bg.fillStyle(0x000000, 0.9);
+        bg.fillRect(0, 0, width, height);
+        bg.setDepth(1); // 배경 뎁스를 낮게 설정
+        this.optionWindow.add(bg);
+        const screenRect = new Phaser.Geom.Rectangle(0, 0, width, height);
+        bg.setInteractive(screenRect, Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', (pointer) => {
+            // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
+            //this.optionWindow.setVisible(false);
+        });
+         this.titleTxt = this.add.text(width / 2, 100, 'Setting', {
+            fontFamily: 'Arial Black, sans-serif',
+            fontSize: '36px',
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(2);
+        this.optionWindow.add(this.titleTxt);
+
+        // ==========================================
+        // 🔊 5️⃣ 볼륨 슬라이더 생성 구역
+        // ==========================================
+        
+        // 현재 게임 시스템의 볼륨 값을 가져옵니다. (없다면 기본값 0.5)
+        // 실제 Phaser 사운드 매니저와 연동하려면 초기값을 기입해 둡니다.
+
+        // 슬라이더 배치 함수 정의 (BGM용 하나, SFX용 하나를 그리기 위함)
+        const createVolumeSlider = (yPos, label, currentVolumeType) => {
+            const sliderX = width / 2 - 100; // 슬라이더 바 시작 X 좌표
+            const sliderWidth = 200;         // 슬라이더 총 가로 길이
+
+            // 텍스트 라벨 (BGM 또는 SFX)
+            const txt = this.add.text(sliderX - 50, yPos, label, { fontSize: '24px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(1, 0.5);
+            
+            // 퍼센트 표시 텍스트 (예: 50%)
+            const currentVolValue = currentVolumeType === 'bgm' ? this.gameOption.bgmVolume : this.gameOption.soundVolume;
+            const percentTxt = this.add.text(sliderX + sliderWidth + 30, yPos, `${Math.round(currentVolValue * 100)}%`, { fontSize: '24px', fill: '#3498db' }).setOrigin(0, 0.5);
+
+            // 슬라이더 배경 바 (회색)
+            const track = this.add.graphics();
+            track.fillStyle(0x444444, 1);
+            track.fillRect(sliderX, yPos - 15, sliderWidth, 30);
+
+            // 슬라이더 게이지 바 (청색 - 현재 볼륨만큼 채워짐)
+            const fill = this.add.graphics();
+            const updateFill = (vol) => {
+                fill.clear();
+                fill.fillStyle(0x3498db, 1);
+                fill.fillRect(sliderX, yPos - 15, sliderWidth * vol, 30);
+            };
+            updateFill(currentVolValue);
+
+            // 조절 손잡이 (하얀색 네모 버튼)
+            // 현재 볼륨에 위치하도록 초기 X값 설정
+            const handleX = sliderX + (sliderWidth * currentVolValue);
+            const handle = this.add.rectangle(handleX, yPos, 20, 35, 0xffffff);
+            handle.setInteractive({ useHandCursor: true });
+            
+            // 드래그 기능 활성화
+            this.input.setDraggable(handle);
+
+            // 드래그 이벤트 리스너 등록
+            handle.on('drag', (pointer, dragX, dragY) => {
+                // 손잡이가 슬라이더 바 범위를 벗어나지 못하도록 제한(Clamp)
+                const minX = sliderX;
+                const maxX = sliderX + sliderWidth;
+                handle.x = Phaser.Math.Clamp(dragX, minX, maxX);
+
+                // X 좌표 기반으로 0.0 ~ 1.0 사이의 볼륨 비율 계산
+                const newVolume = (handle.x - sliderX) / sliderWidth;
+                
+                // 텍스트 및 게이지 실시간 업데이트
+                percentTxt.setText(`${Math.round(newVolume * 100)}%`);
+                updateFill(newVolume);
+
+                // 실제 Phaser 오디오 매니저에 볼륨 적용
+                if (currentVolumeType === 'bgm') {
+                    this.gameOption.bgmVolume = Math.ceil(newVolume*100)/100 ;
+                    // 배경음 사운드 객체가 실제로 작동 중이라면 실시간 반영
+                    // if (this.bgmMusic) this.bgmMusic.setVolume(newVolume);
+                    if (this.bgm && this.bgm.isPlaying) {
+                        this.bgm.setVolume(this.gameOption.bgmVolume);
+                    }
+                    //console.log("BGM 볼륨 변경:", this.gameOption.bgmVolume);
+                } else {
+                    this.gameOption.soundVolume = Math.ceil(newVolume*100)/100 ;
+                    // 효과음 볼륨도 시스템 전체에 반영 가능
+                    // this.sound.volume = newVolume; 
+                    //console.log("SFX 볼륨 변경:", this.gameOption.soundVolume);
+                }
+            });
+
+            // 컨테이너에 UI 부품들 몽땅 집어넣기
+            this.optionWindow.add([txt, percentTxt, track, fill, handle]);
+        };
+
+        // 6️⃣ 원하는 Y 높이에 볼륨바 배치 실행
+        createVolumeSlider(height / 2 - 30, 'BGM', 'bgm'); // 상단에 BGM 슬라이더
+        createVolumeSlider(height / 2 + 50, 'SFX', 'sfx'); // 하단에 SFX 슬라이더
+
+        const posX = 130;
+        const posY = 240;
+
+        const itemContainer =this.add.container(0,0).setDepth(3);
+
+        const bt1 = this.makeButton(160,50,posX, posY +0, "사운드");
+        bt1.on('pointerdown', (pointer) => {
+            itemContainer.removeAll(true);
+        });
+        this.optionWindow.add(bt1);
+
+        const xbt = this.makeButton(120,50, width/2 +90, height-50, "취소");
+        xbt.on('pointerdown', (pointer) => {
+            this.loadOption();
+            this.bgm.setVolume(this.gameOption.bgmVolume);
+            itemContainer.removeAll(true);
+            this.drawOptionList(false);
+        });
+        this.optionWindow.add(xbt);
+
+        const savebt = this.makeButton(200,50, width/2-90, height-50, "💾저장 후 닫기");
+        savebt.on('pointerdown', (pointer) => {
+            this.saveOption();
+            this.bgm.setVolume(this.gameOption.bgmVolume);
+            itemContainer.removeAll(true);
+            this.drawOptionList(false);
+        });
+        this.optionWindow.add(savebt);
+
+    }
+
+
     drawHowToList(visible =true ){
         this.howToWindow.visible = visible;
         this.howToWindow.removeAll(true);
@@ -281,7 +435,7 @@ class SaveLoadScene extends Phaser.Scene {
 게임이 끝난 후 획득한 💰재화로 업그레이드를 진행합니다.
 업그레이드는 총 4개의 카테고리가 있으며 업그레이드를 해금하거나 등급을 상승시킵니다.`
         
-        const txt = this.add.text( posX*2, posY-20, txt0,{ 
+        const txt = this.add.text( posX*2 +20, posY-20, txt0,{ 
             fontSize: '24px', 
             fill: '#ffffff',
             padding: { x: 5, y: 5 },
@@ -302,14 +456,14 @@ class SaveLoadScene extends Phaser.Scene {
         const bt2 = this.makeButton(160,50,posX,posY +80, "주둔군");
         bt2.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
-            const cath = this.add.sprite(360,220 ,'cathedral').setDisplaySize(128,128); 
+            const cath = this.add.sprite(360,260 ,'cathedral').setDisplaySize(128,128); 
             cath.anims.play('cathedral_fire', true);
             itemContainer.add(cath);
         
             txt.setText( 
 `            ⛪대성당 에서 🙏개종을 해금하거나 🪄마녀의 ⚡현혹술 로 
              적을 아군으로 포섭할 수 있습니다. 
-아군으로 포섭하게 되면 👥예비인력이 생깁니다.
+             아군으로 포섭하게 되면 👥예비인력이 생깁니다.
 
 주둔군을 고용하게 되면 💸유지비가 소모되며, 💸유지비를 내지 못할 경우 주둔군을 해고하게 됩니다.`);
         });
@@ -461,21 +615,21 @@ class SaveLoadScene extends Phaser.Scene {
 
             // 4. 📝 텍스트 배치 및 뎁스 고정
             let waveText, infoText, versionText, dayText, xBt;
-            const titleStyle = { fontFamily: 'Impact, sans-serif', fontSize: '32px', fill: '#ffcc00' };
+            const titleStyle = { fontFamily: 'Impact, sans-serif', fontSize: '36px', fill: '#ffcc00' };
             const bodyStyle = { fontFamily: 'Arial, sans-serif', fontSize: '24px', fill: '#ffffff' };
             const verStyle = { fontFamily: 'monospace', fontSize: '14px', fill: '#eeeeee' };
             const dayStyle = { fontFamily: 'Arial, sans-serif', fontSize: '16px', fill: '#ffffff' };
             const xStyle = { fontFamily: 'Arial, Bold', fontSize: '32px', fill: '#ff0000' };
 
             if (saveData.isEmpty) {
-                waveText = this.add.text(startX - slotWidth / 2 + 20, y - 25, `SLOT ${slotIndex}`, titleStyle);
+                waveText = this.add.text(startX - slotWidth / 2 + 20, y - 30, `SLOT ${slotIndex}`, titleStyle);
                 infoText = this.add.text(startX - slotWidth / 2 + 20, y + 10, `비어 있음`, { ...bodyStyle, fill: '#777777' });
                 versionText = this.add.text(startX + slotWidth / 2 - 20, y + slotHeight / 2 - 15, '', verStyle);
                 dayText = this.add.text(startX + slotWidth / 2 - 20, y  - 20, '', dayStyle);
                 xBt = this.add.text(startX + slotWidth / 2 - 30, y - 35, ``, xStyle);
             } else {
                 
-                waveText = this.add.text(startX - slotWidth / 2 + 20, y - 25,
+                waveText = this.add.text(startX - slotWidth / 2 + 20, y - 30,
                      `WAVE : ${saveData.wave.value}`, titleStyle);
                 infoText = this.add.text(startX - slotWidth / 2 + 20, y + 10, 
                     `점수: ${saveData.score} | 💰: ${saveData.gold}G | 🏹: ${saveData.stat.archer} | 🪄: ${saveData.stat.witch}`, bodyStyle);
@@ -600,19 +754,27 @@ class SaveLoadScene extends Phaser.Scene {
 
 
     saveOption(){
+        /*
         const gameOption ={
             loadGameData: 'projectCD_data',
-            autoSkillHold:true
-        }
-        localStorage.setItem('projectCD_saveOption', JSON.stringify(gameOption));
+            autoSkillHold:true,
+            bgmVolume:0,
+            soundVolume:0
+        }*/
+        localStorage.setItem('projectCD_saveOption', JSON.stringify(this.gameOption));
     }
     loadOption(){
         const saveOption = localStorage.getItem('projectCD_saveOption');
         if(saveOption){
             const data = JSON.parse(saveOption);
             //저장된 환경설정 변수가 있다면?
-            if(data.autoSkillHold!=null) data.autoSkillHold=true;
-
+            if(data.loadGameData ==null) data.loadGameData ='projectCD_data1';
+            if(data.autoSkillHold ==null) data.autoSkillHold=true;
+            if(data.bgmVolume ==null) data.bgmVolume =0;
+            if(data.soundVolume==null) data.soundVolume = 0;
+            if(data.arrowEfCount ==null) data.arrowEfCount = 10;
+                        
+            this.autoSkillHold = data.autoSkillHold;
             this.loadGameData = data.loadGameData;
             this.gameOption = data;
             console.log(`환경설정을 불러왔습니다`,data);
@@ -765,6 +927,65 @@ class SaveLoadScene extends Phaser.Scene {
         });
     }
 
+    playSound(name, randomIndex =-1, hasDetune=true){
+        const randomDetune = hasDetune==true? Phaser.Math.Between(-150, 150) : 0 ;
+        const num = randomIndex<0? '' : Phaser.Math.Between(0, randomIndex-1);
+        this.sound.play(`${name}${num}`, {volume:this.gameOption.soundVolume, detune: randomDetune});
+    }
+    playBGM2(name, isloop=true){
+        const bgmConfig = {
+            mute: false,         // 음소거 여부
+            volume: this.gameOption.bgmVolume,       // 볼륨 (0.0 ~ 1.0)
+            rate: 1,            // 재생 속도 (1이 배속)
+            detune: 0,          // 음정 조절
+            seek: 0,            // 시작 재생 위치 (초 단위)
+            loop: isloop,         // 🔄 무한 반복 여부
+            delay: 0            // 재생 전 대기 시간
+        };
 
+        // 사운드 매니저에 BGM을 등록하고 바로 플레이합니다.
+        this.bgm2 = this.sound.add(name, bgmConfig);
+        this.bgm2.play();
+    }
+    playBGM(name, isloop=true){
+        const bgmConfig = {
+            mute: false,         // 음소거 여부
+            volume: this.gameOption.bgmVolume,       // 볼륨 (0.0 ~ 1.0)
+            rate: 1,            // 재생 속도 (1이 배속)
+            detune: 0,          // 음정 조절
+            seek: 0,            // 시작 재생 위치 (초 단위)
+            loop: isloop,         // 🔄 무한 반복 여부
+            delay: 0            // 재생 전 대기 시간
+        };
 
+        // 사운드 매니저에 BGM을 등록하고 바로 플레이합니다.
+        this.bgm = this.sound.add(name, bgmConfig);
+        this.bgm.play();
+    }
+    setBGMfadeout() {
+        if(this.bgm !=null && this.bgm.isPlaying==false){
+            console.log('false');
+            return;
+        }
+    const vol0 = this.gameOption.bgmVolume;
+    let vol = 1;
+    
+    // 🌟 화살표 함수를 사용하므로, 내부에서 스스로를 지우기 위해 
+    // 클래스 변수(this.fadeout) 형태로 타이머를 선언합니다.
+    this.fadeout = this.time.addEvent({
+        delay: 100,
+        callback: () => { // ⭕ function() 대신 화살표 함수 구문 사용!
+            vol -= 0.05;
+            this.bgm.setVolume(vol * vol0); 
+            
+            if (vol <= 0) {
+                // 1️⃣ 볼륨 감소용 타이머 이벤트를 확실하게 파괴하여 루프를 멈춥니다.
+                this.fadeout.destroy(); 
+                this.bgm.stop(); 
+                console.log("BGM 페이드아웃 완료");
+            }
+        },
+        loop: true
+    });
+}
 }

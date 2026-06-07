@@ -4,23 +4,24 @@ class MainMenuScene extends Phaser.Scene {
         super('MainMenuScene');
     }
 
-    preload() {
-        // 배경 이미지와 버튼 이미지 로드
-        this.load.image('menu_bg', 'assets/menu_background.png');
-    }
-
+    
     create() {
+
+        
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        this.saveloadscene = this.scene.get('SaveLoadScene');
+
         
 
         // GameScene이나 UIScene의 create() 단계에 배치
-        const fsButton = this.add.text(150, height-40, '🖥️ FULLSCREEN', {
-            fontFamily: 'Arial',
+        const fsButton = this.add.text(120, height-40, '🖥️ FULLSCREEN', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '24px',
             fill: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 5
+            strokeThickness: 6
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(10);
 
         // 버튼을 누르면 켜져있을 땐 꺼지고, 꺼져있을 땐 켜집니다.
@@ -57,9 +58,9 @@ class MainMenuScene extends Phaser.Scene {
         this.mobs = this.physics.add.group();
         //0.5초마다 몹이 생성됨
         this.mainmenuSpawn = this.time.addEvent({
-            delay: 700,
+            delay: 500,
             callback: () => {
-                const mob = this.physics.add.sprite(width * 0.7 + Phaser.Math.Between(-200, 200), -50 -Phaser.Math.Between(0, 100), 'mobsprite1');
+                const mob = this.physics.add.sprite(width * 0.7 + Phaser.Math.Between(-250, 250), -150 -Phaser.Math.Between(0, 400), 'mobsprite1');
                 mob.setVelocityX(0); // 왼쪽으로 이동
                 mob.anims.play('mob1_walk', true);
                 mob.setCollideWorldBounds(true);
@@ -110,7 +111,7 @@ class MainMenuScene extends Phaser.Scene {
             strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const noticeButton = this.add.text(width *0.1, height * 0.78, '| Notice |', {
+        const settingButton = this.add.text(width *0.1, height * 0.78, '| Setting |', {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '32px',
             fill: '#ffffff',
@@ -118,6 +119,14 @@ class MainMenuScene extends Phaser.Scene {
             strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
+
+        const noticeButton = this.add.text(width *0.9, height * 0.9, 'Notice', {
+            fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '32px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0).setInteractive({ useHandCursor: true });
         // 마우스 올렸을 때 효과
         startButton.on('pointerover', () => startButton.setColor('#ffffff').setScale(1.1));
         startButton.on('pointerout', () => startButton.setColor('#ffcc00').setScale(1.0));
@@ -128,24 +137,30 @@ class MainMenuScene extends Phaser.Scene {
         const savedData = localStorage.getItem('projectCD_data1');
 
         if(savedData){
-            startButton.text = '[ CONTINUE ]';
+            startButton.text = '| CONTINUE |';
         }
         // 클릭 시 인게임(GameScene)으로 전환
         startButton.on('pointerdown', () => {
 
-            this.scene.get('SaveLoadScene').saveWindowVisible(true, 'dataload');
+            this.saveloadscene.saveWindowVisible(true, 'dataload');
         });
         // 클릭 시 인게임(GameScene)으로 전환
          newGameButton.on('pointerdown', (pointer) => {
             this.newGameStart()
             return;
         });
+
+        settingButton.on('pointerdown', (pointer) => {
+            this.saveloadscene.drawOptionList();
+            return;
+        });
+
         howToButton.on('pointerdown', (pointer) => {
-            this.scene.get('SaveLoadScene').drawHowToList();
+            this.saveloadscene.drawHowToList();
             return;
         });
         noticeButton.on('pointerdown', (pointer) => {
-            this.scene.get('SaveLoadScene').openNoticeWindow();
+            this.saveloadscene.openNoticeWindow();
             return;
         });
 
@@ -163,7 +178,7 @@ class MainMenuScene extends Phaser.Scene {
             mob.anims.stop(); // 애니메이션도 멈춤
         }
         this.mobBloodEffect(mob); // 피 효과 추가
-
+        
         scene.tweens.add({
             targets: mob,
             alpha: 0,
@@ -172,6 +187,7 @@ class MainMenuScene extends Phaser.Scene {
         }); 
     }
     mobBloodEffect(mob){
+        this.saveloadscene.playSound('hit',4);
         const blood = this.add.ellipse(mob.x, mob.y+mob.height/3, 60,20, 0xff0000).setAlpha(0.8);
         this.tweens.add({
             targets: blood,
@@ -183,7 +199,7 @@ class MainMenuScene extends Phaser.Scene {
         });
     }
     newGameStart( data = null){
-        this.mainmenuSpawn.remove(); // 몹 생성 타이머 제거
+        this.mainmenuSpawn.destroy(); // 몹 생성 타이머 제거
         this.scene.start('GameScene' ,data );
     }
     

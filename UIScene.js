@@ -28,11 +28,24 @@ class UIScene extends Phaser.Scene {
 
         // 2. 게임오버 화면 그룹
         this.gameOverMenu = this.add.container(0, 0).setVisible(false);
-        const overBg = this.add.rectangle(width/2, height/2, width, height, 0xff0000, 0.3);
-        this.endscoreText = this.add.text(width/2, height/2, 'SCORE: 0', { fontSize: '48px' , fill: '#000000'}).setOrigin(0.5);
-        
+        this.endscoreText = this.add.text(width/2, height/2, 'SCORE: 0', { 
+            fontFamily: 'Arial', 
+            fontSize: '32px', 
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3 // 글자 테두리
+             }).setOrigin(0.5);
+        const bg = this.add.rectangle(width/2, height/2, width, height, 0xff0000, 0.4);//.setStrokeStyle(2, 0xffffff);
+        this.gameOverMenu.add(bg);
+        bg.setDepth(0); // 배경이 제일 뒤에 있도록
+        const screenRect = new Phaser.Geom.Rectangle(0, 0, width, height);
+        bg.setInteractive(screenRect, Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', (pointer) => {
+            // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
+        });
         // 1. 다시 시작 버튼 생성
-        const restartBtn = this.add.text(config.width / 2, config.height / 2 + 100, 'Restart', {
+        const restartBtn = this.add.text(width / 2, height / 2 + 100, 'Restart', {
             fontSize: '32px',
             fill: '#ffffff',
             backgroundColor: '#222222',
@@ -45,7 +58,7 @@ class UIScene extends Phaser.Scene {
         restartBtn.on('pointerdown', () => {
             this.restartGame();
         })
-        this.gameOverMenu.add([overBg, this.endscoreText, restartBtn]);
+        this.gameOverMenu.add([bg, this.endscoreText, restartBtn]);
         this.gameOverMenu.setDepth(20); // 다른 UI 요소들보다 위에 표시
 
         // 1. 결과창 및 업그레이드 창 컨테이너 생성 함수 호출
@@ -87,10 +100,16 @@ class UIScene extends Phaser.Scene {
             if(!this.isPaused){
                 this.togglePause();
             }else if(event.code =='Escape'){
-
+                let bk = true;
                 if(this.saveLoadScene.howToWindow != null && this.saveLoadScene.howToWindow.visible){
                     this.saveLoadScene.drawHowToList(false);
-                }else{
+                    bk=false;
+                }
+                if(this.saveLoadScene.optionWindow != null && this.saveLoadScene.optionWindow.visible){
+                    this.saveLoadScene.drawOptionList(false);
+                    bk=false;
+                }
+                if(bk){
                      this.togglePause();
                 }
             }
@@ -138,14 +157,15 @@ class UIScene extends Phaser.Scene {
 
         
         this.manaTxt = this.add.text(config.width /2, config.height-140,``,{
+            fontFamily: 'Arial', 
             fontSize: '24px',
             fill:'#3498db ',
             fontStyle: 'bold',
             stroke: '#000000',
             strokeThickness: 3
-        }).setOrigin(0.5, 0).setDepth(10);
+        }).setOrigin(0.5, 0).setDepth(21);
         this.manaBar = this.add.graphics();
-        this.manaBar.setDepth(9);
+        this.manaBar.setDepth(20);
         this.drawManaBar(this.manaBar);
 
 
@@ -193,6 +213,7 @@ class UIScene extends Phaser.Scene {
 
         gameScene.events.on('showGameOver', (data) => {
             this.isPaused=true;
+            this.setSkillUIVisibility(false);
             this.endscoreText.setText(`SCORE: ${data.score.toLocaleString()}`);
             this.scene.pause('GameScene'); 
             this.gameOverMenu.setVisible(true);
@@ -329,18 +350,32 @@ class UIScene extends Phaser.Scene {
         graphics.fillRect(width/2 -100 , 65, 200 * timeRatio, 10);
         this.waveText.setText(`Wave ${this.wave.value || 1}`);
     }
-    drawManaBar(graphics){
+    drawManaBar(graphics, x = 0, y = 0){
+        let maxWidth =200;
+        let mptxt ='';
+        if(this.upgradeWindow.visible){
+            x= -450;
+            y= -300;
+            maxWidth = 120;
+            mptxt = 'MP: ';
+        }
+
         const {width, height} = this.cameras.main;
-        const barWidth = 100 +  (this.stat.maxMp >300? 300 : this.stat.maxMp ); 
+        const barWidth = 100 +  (this.stat.maxMp >maxWidth? maxWidth : this.stat.maxMp ); 
+        
         graphics.clear();
         graphics.fillStyle(0x222222);
-        graphics.fillRect( width/2 -barWidth/2 ,height-120 , barWidth, 16);
+        graphics.fillRect( width/2 -barWidth/2 +x ,height-120 +y, barWidth, 16);
 
         graphics.fillStyle( 0x3498db );
         const timeRatio = Phaser.Math.Clamp(this.stat.mp/ this.stat.maxMp, 0, 1);
-        graphics.fillRect(width/2 -barWidth/2 ,height-120 , barWidth * timeRatio, 16);
+        graphics.fillRect(width/2 -barWidth/2+x ,height-120+y , barWidth * timeRatio, 16);
 
-        this.manaTxt.setText(`${ Math.floor(this.stat.mp)}/${this.stat.maxMp}`);
+        //this.manaTxt = this.add.text(config.width /2, config.height-140,``,{
+        this.manaTxt.setText(`${mptxt}${ Math.floor(this.stat.mp)}/${this.stat.maxMp}`);
+        this.manaTxt.x = config.width /2+x;
+        this.manaTxt.y = config.height-140+y;
+       
 
     }
     shakeMpBar(shakeIntensity = 8){
@@ -480,15 +515,20 @@ class UIScene extends Phaser.Scene {
         const pauseInfoText = this.add.text(width/2,height/2-110, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
         this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
 
-
-        const howToBt = this.makeButton(200,50, width/2, 330, 'How to Play');
+        const Ypos = 260;
+        const howToBt = this.makeButton(200,50, width/2, Ypos+65, 'How to Play');
         howToBt.on('pointerdown', () => {
              this.saveLoadScene.drawHowToList();
+        });
+        //환경설정버튼
+         const optionBt = this.makeButton(200,50, width/2, Ypos+130, 'Setting');
+        optionBt.on('pointerdown', () => {
+             this.saveLoadScene.drawOptionList();
         });
 
 
          //전체화면버튼
-        const fullscBt = this.makeButton(200,50, width/2, 400, '🖥️Fullscreen');
+        const fullscBt = this.makeButton(200,50, width/2, Ypos+195, '🖥️Fullscreen');
         fullscBt.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen(); // 전체화면 끄기
@@ -500,7 +540,7 @@ class UIScene extends Phaser.Scene {
         });
 
         //재시작버튼
-        const restartBt = this.makeButton(200,50,width/2,470, 'Restart');
+        const restartBt = this.makeButton(200,50,width/2,Ypos+260, 'Restart');
         restartBt.on('pointerdown', () => {
 
             this.saveLoadScene.showConfirmPopup( '정말로 재시작하겠습니까?\n(페이지를 새로고침 합니다)',
@@ -512,7 +552,13 @@ class UIScene extends Phaser.Scene {
             
         });
 
-        this.pauseMenu.add( [howToBt, fullscBt,restartBt] );
+        //닫기버튼
+         const closeBt = this.makeButton(200,50, width/2, Ypos+340, 'Close');
+        closeBt.on('pointerdown', () => {
+             this.togglePause();
+        });
+
+        this.pauseMenu.add( [howToBt,optionBt, fullscBt,restartBt, closeBt] );
         
         this.pauseMenu.setDepth(200); // 다른 UI 요소들보다 위에 표시
 
@@ -597,37 +643,37 @@ class UIScene extends Phaser.Scene {
         console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
 
         // 0.4초 뒤: 쓰러트린 적 표시
-        this.time.delayedCall(400 , () => {
+        this.time.delayedCall(300 , () => {
             txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
-        this.time.delayedCall(700 , () => {
+        this.time.delayedCall(600 , () => {
             txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         // 0.8초 뒤: 획득한 골드 표시
-        this.time.delayedCall(1200 , () => {
+        this.time.delayedCall(900 , () => {
             txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
         });
 
         // 1.2초 뒤: 유지비 표시
-        this.time.delayedCall(1600, () => {
+        this.time.delayedCall(1200, () => {
             txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
         });
-        this.time.delayedCall(2000 , () => {
+        this.time.delayedCall(1500 , () => {
             txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
         });
         //게리슨 사망자 표시
-        this.time.delayedCall(2600 , () =>{
+        this.time.delayedCall(1800 , () =>{
             txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
         
         });
 
 
         // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
-        this.time.delayedCall(3200 , () => {
+        this.time.delayedCall(2400 , () => {
             // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
             const scoreCounter = { value: 0 };
             this.tweens.add({
@@ -770,6 +816,11 @@ class UIScene extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, width, height, 0x222222, 0.9);//.setStrokeStyle(2, 0xffffff);
         this.upgradeWindow.add(bg);
         bg.setDepth(0); // 배경이 제일 뒤에 있도록
+        const screenRect = new Phaser.Geom.Rectangle(0, 0, width, height);
+        bg.setInteractive(screenRect, Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', (pointer) => {
+            // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
+        });
 
         const bg2 = this.add.rectangle(-width/2+150, 0, 250, height, 0x222222, 0.9);
         this.upgradeWindow.add(bg2);
@@ -1039,8 +1090,10 @@ class UIScene extends Phaser.Scene {
             }
         });
 
-
-
+        if(this.holdSkillTxt) this.holdSkillTxt.destroy();
+        if(this.activeSkillBox){
+            this.activeSkillBox.destroy();
+        }
 
         // 바구니 자체를 완전히 빈 객체로 초기화합니다.
         this.skillUIComponents = {};
@@ -1050,6 +1103,8 @@ class UIScene extends Phaser.Scene {
     }
     createSkillUI() {
         this.clearSkillUI();
+        if(this.upgradeWindow.visible) return;
+
         const { width, height } = this.cameras.main;
         const size = 80; // 사각형 상자 크기 (60x60)
         const size2 = 96;
@@ -1071,7 +1126,7 @@ class UIScene extends Phaser.Scene {
         this.activeSkillBox.add( activeskbox);
 
         //스킬시전 안내 텍스트
-        this.holdSkillTxt = this.add.text(width,height, 'double tab \nto keep skill',
+        this.holdSkillTxt = this.add.text(width,height, 'double tab \nto keep skill ',
             {fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '24px',
             fill: '#3499ff',
@@ -1304,11 +1359,11 @@ class UIScene extends Phaser.Scene {
 
             // 1️⃣ [쿨타임 상태]
             if (skill.cooltime > 0) {
-                const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.1 ) : 1 ; //witch의 스킬인 경우
+                const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.05 ) : 1 ; //witch의 스킬인 경우
                 skill.cooltime -= delta * coolSpeed;
                 comp.uiState = 'cooldown'; // 상태 변경
 
-                const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1)
+                const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1);
                 const displaySec = remainingSec > 0 ? remainingSec : '0.0';
                 comp.text.setText(`${displaySec}s`);
                 comp.text.setFill('#ff4d4d');

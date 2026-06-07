@@ -40,7 +40,34 @@ class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('mobsprite10', 'assets/mobsprite10.png', { frameWidth: 128, frameHeight: 128});
         //this.load.image('wall', 'assets/wall.png');
         // 사운드나 폰트도 여기서 로드
+        this.load.audio('bgm_main', 'sfx/Noddinagushpa_far.ogg');
+        this.load.audio('bgm_start0','sfx/coh2bb_stingers_level_up.ogg');
+        this.load.audio('bgm_waveEnd','sfx/stageEnd.ogg');
+        this.load.audio('bgm_defeat', 'sfx/defeat_stinger.ogg');
+        this.load.audio('callToArms', 'sfx/call-to-arms.mp3');
+
+        this.load.audio('arrowfire0', 'sfx/arrow_pass_by_2.wav');
+        this.load.audio('arrowfire1', 'sfx/arrow_pass_by_3.wav');
+        this.load.audio('arrowfire2', 'sfx/arrow_pass_by_4.wav');
+        this.load.audio('hit0', 'sfx/hit0.wav');
+        this.load.audio('hit1', 'sfx/hit1.wav');
+        this.load.audio('hit2', 'sfx/hit2.wav');
+        this.load.audio('hit3', 'sfx/hit3.wav');
+
+        this.load.audio('dead0', 'sfx/dead0.ogg');
+        this.load.audio('dead1', 'sfx/dead1.ogg');
+        this.load.audio('dead2', 'sfx/dead2.ogg');
+
+        this.load.audio('wallhit0','sfx/wood_crate_impact_hard2.wav');
+        this.load.audio('wallhit1','sfx/wood_crate_impact_hard3.wav');
+        this.load.audio('wallhit2','sfx/wood_crate_impact_soft1.wav');
+
+        this.load.audio('holy','sfx/holy-spell-aura.mp3');
+        this.load.audio('curse0','sfx/yodguard1.mp3');
+        this.load.audio('curse1','sfx/yodguard2.mp3');
+        this.load.audio('curse2','sfx/yodguard3.mp3');
         
+
         // 3. 로딩이 완료되면 실행될 이벤트
         this.load.on('complete', () => {
             loadingText.destroy();

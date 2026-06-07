@@ -246,7 +246,7 @@ class GameScene extends Phaser.Scene {
     startCathedralConvertion(target){
         if(!this.getUpgradeItem('cathedral','conversion').unlock) return; // 개종이 해금되지 않았다면 실행하지 않음
         if(this.cathedralTimer) return; // 이미 진행 중이라면 중복 실행 방지
-
+        this.saveLoadScene.playSound('holy',-1,false);
         this.createBeamEffect(this.cathedral.x+30, this.cathedral.y, this.stat.convertionTime , '0xffcc00', 60);
         this.updateScore(target.score);
         target.destroy();
@@ -278,6 +278,8 @@ class GameScene extends Phaser.Scene {
     }
 
     waveStart(delayTimer ) {
+        this.saveLoadScene.setBGMfadeout();
+        this.saveLoadScene.playBGM2('bgm_start0',false);
         this.setBgImage('background1');
         console.log(`웨이브 ${this.wave.value} 시작!`);
         this.isPaused=false;
@@ -334,6 +336,8 @@ class GameScene extends Phaser.Scene {
                     element.remove();
                 });
                 this.spawnTimers = [];
+                //게임종료 후 호른
+                this.saveLoadScene.playBGM('callToArms',false);
                 console.log("웨이브 종료, 적들이 탈주합니다")
                         },
             callbackScope: this,
@@ -472,6 +476,7 @@ class GameScene extends Phaser.Scene {
 
 
             console.log("웨이브 클리어! 잠시 휴식...");
+            this.saveLoadScene.playBGM('bgm_waveEnd',false);
             return;
         }
 
@@ -720,6 +725,7 @@ class GameScene extends Phaser.Scene {
     // 대미지 함수 수정
     takeDamage = (mob) => {
         if (this.isGameOver) return; // 게임 오버 상태에서는 대미지 무시
+        this.saveLoadScene.playSound('wallhit',3);
 
         const damage = Phaser.Math.Clamp( mob.damage - this.stat.armor, 1,100);//최소대미지 고정
         this.stat.hp -= damage;
@@ -749,6 +755,8 @@ class GameScene extends Phaser.Scene {
                 const uiScene = this.scene.get('UIScene');
 
                 if(this.stat.archer > 0 && this.data.garrisonLoss =='archer'){   
+
+                    this.saveLoadScene.playSound('dead',3);
                     console.log(`💀🏹 궁수 사망 (${this.stat.archer}->${this.stat.archer-1})` );
                     this.stat.archer --; // 궁병 제거
                     this.data.archerDeath++; 
@@ -784,6 +792,7 @@ class GameScene extends Phaser.Scene {
 
                 //마법사 제거 로직도 여기에 추가 가능
                 if(this.stat.witch>0 && this.data.garrisonLoss =='witch'){
+                    this.saveLoadScene.playSound('dead',3);
                     console.log(`💀🪄 마녀 사망 (${this.stat.witch} -> ${this.stat.witch-1})`);
                     this.stat.witch--;
                     this.data.witchDeath++;
@@ -869,6 +878,7 @@ class GameScene extends Phaser.Scene {
         });
     }
     mobBloodEffect(mob){
+        this.saveLoadScene.playSound('hit',4);
         const blood = this.add.ellipse(mob.x, mob.y+mob.height/3, 60,20, 0xff0000).setAlpha(0.8);
         this.tweens.add({
             targets: blood,
@@ -1056,6 +1066,8 @@ class GameScene extends Phaser.Scene {
     }
 
     archerFire(targeting =null){
+        this.saveLoadScene.playSound('arrowfire',3);
+
         let delayCallTime = 1100;
         let archerNumber = this.stat.archer;
         const mobArray = this.mobs.getMatching('isDragging',false);
@@ -1135,6 +1147,7 @@ class GameScene extends Phaser.Scene {
             else if (activeSkill === 'curse') {
                 console.log(`💀 ${skill.name} 발동! ${mob.name}가 즉시 사망합니다`);
                 this.fadeOutAndDestroy(this, mob);
+                this.saveLoadScene.playSound('curse',3,false);
                 this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
             }
             else if (activeSkill === 'forceConv') {
@@ -1143,6 +1156,7 @@ class GameScene extends Phaser.Scene {
                 mob.destroy();
                 this.data.earnManpower ++;
                 this.stat.manPower++;
+                this.saveLoadScene.playSound('holy');
                 this.createBeamEffect(mob.x, config.height-this.groundHeight , 1200 , '0xffcc00', 50);
             }
             // 3. ⏱️ 스킬을 성공적으로 썼으므로 쿨타임을 적용합니다.
@@ -1190,6 +1204,7 @@ class GameScene extends Phaser.Scene {
     // GameScene 내부의 gameOver 함수
     gameOver() {
         this.isGameOver = true;
+        this.saveLoadScene.playBGM('bgm_defeat',false);
         this.physics.pause(); // 게임 로직만 멈춤
 
         // UIScene을 GameScene 위에 띄움 (데이터 전달 가능)
