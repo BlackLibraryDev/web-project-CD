@@ -352,12 +352,17 @@ class UIScene extends Phaser.Scene {
     }
     drawManaBar(graphics, x = 0, y = 0){
         let maxWidth =200;
-        let mptxt ='';
+        let mptxt =``;
+        let mptxtend =``;
         if(this.upgradeWindow.visible){
             x= -450;
             y= -300;
-            maxWidth = 120;
+            maxWidth = 100;
             mptxt = 'MP: ';
+            mptxtend='    ';
+        }else{
+            //mptxt = `🪄x${this.stat.witch} `;
+            //mptxtend =`           `;
         }
 
         const {width, height} = this.cameras.main;
@@ -372,7 +377,7 @@ class UIScene extends Phaser.Scene {
         graphics.fillRect(width/2 -barWidth/2+x ,height-120+y , barWidth * timeRatio, 16);
 
         //this.manaTxt = this.add.text(config.width /2, config.height-140,``,{
-        this.manaTxt.setText(`${mptxt}${ Math.floor(this.stat.mp)}/${this.stat.maxMp}`);
+        this.manaTxt.setText(`${mptxt}${ Math.floor(this.stat.mp)}/${this.stat.maxMp}${mptxtend}`);
         this.manaTxt.x = config.width /2+x;
         this.manaTxt.y = config.height-140+y;
        
@@ -511,11 +516,11 @@ class UIScene extends Phaser.Scene {
         const { width, height } = this.cameras.main;
         this.pauseMenu = this.add.container(0, 0).setVisible(this.isPaused);
         const pauseBg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
-        const pauseText = this.add.text(width/2, height/2 -150, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
-        const pauseInfoText = this.add.text(width/2,height/2-110, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
+        const pauseText = this.add.text(width/2, height/2 -180, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
+        const pauseInfoText = this.add.text(width/2,height/2-140, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
         this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
 
-        const Ypos = 260;
+        const Ypos = 200;
         const howToBt = this.makeButton(200,50, width/2, Ypos+65, 'How to Play');
         howToBt.on('pointerdown', () => {
              this.saveLoadScene.drawHowToList();
@@ -640,15 +645,18 @@ class UIScene extends Phaser.Scene {
         this.resultTexts.push(txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtDeath, txtTotal);
 
         // 3. ⏱️ 시간차(Delay)를 두고 텍스트를 하나씩 채워나가는 연출
-        console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
+        //console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
 
         // 0.4초 뒤: 쓰러트린 적 표시
         this.time.delayedCall(300 , () => {
+            
+            
             txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         this.time.delayedCall(600 , () => {
+            this.saveLoadScene.playBGM('bgm_waveEnd',false);
             txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
@@ -821,10 +829,16 @@ class UIScene extends Phaser.Scene {
         bg.on('pointerdown', (pointer) => {
             // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
         });
-
+        
         const bg2 = this.add.rectangle(-width/2+150, 0, 250, height, 0x222222, 0.9);
         this.upgradeWindow.add(bg2);
 
+        const flag = this.add.sprite(-width/2+155, 0,'flag');
+        flag.displayWidth =300;
+        flag.displayHeight=960;
+        flag.y =-100;
+        
+        this.upgradeWindow.add(flag);
         // 2. 내용이 표시될 서브 컨테이너 (여기에 리스트를 그립니다)
         this.contentArea = this.add.container(0, -120); 
         this.upgradeWindow.add(this.contentArea);
@@ -885,7 +899,7 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(name); // 첫 번째 카테고리 자동 선택
             }
 
-            const xPos = -220 + (index * 160); // 150px 간격으로 배치
+            const xPos = -200 + (index * 160); // 150px 간격으로 배치
             const yPos = -190;
 
             // 1. 배경 사각형 (모두 동일한 120x40 사이즈)
@@ -922,7 +936,7 @@ class UIScene extends Phaser.Scene {
     
     showCategory(categoryName) {
         const { width, height } = this.cameras.main;
-        const X = -400; // 텍스트 시작 X 좌표
+        const X = -380; // 텍스트 시작 X 좌표
         const Y = 80; // 텍스트 시작 Y 좌표
 
         // 1. 기존 리스트 싹 비우기 (중요!)
@@ -1103,7 +1117,7 @@ class UIScene extends Phaser.Scene {
     }
     createSkillUI() {
         this.clearSkillUI();
-        if(this.upgradeWindow.visible) return;
+        //if(this.upgradeWindow.visible) return;
 
         const { width, height } = this.cameras.main;
         const size = 80; // 사각형 상자 크기 (60x60)
@@ -1274,6 +1288,8 @@ class UIScene extends Phaser.Scene {
             comp.text.setScale(1.0);
         });
     }
+
+
     update(time, delta) {
         //const gameScene = this.scene.get('GameScene');
 

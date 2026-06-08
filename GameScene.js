@@ -31,7 +31,8 @@ class GameScene extends Phaser.Scene {
         this.skills = [
             { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
             { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 },
-            { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 }
+            { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 },
+            { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 60 }
         ];
         this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
             mp:0, maxMp:0,
@@ -59,7 +60,8 @@ class GameScene extends Phaser.Scene {
             'magichall': [
                 { tag:'witch', name: '🪄마녀 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 20, manPower:1, info:`👥인력으로 마녀를 고용합니다(💸-${this.stat.witchCost}) 다양한 마법을 사용할 수 있습니다`},
                 { tag:'curse', name: '⚡저주', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 25, info:`마나 ${this.skills.find(s => s.tag =='curse').mp }을 소모하여 적을 즉사시킵니다.`},
-                { tag:'forceConv', name: '⚡현혹술', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`}
+                { tag:'forceConv', name: '⚡현혹술', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30, info:`마나 ${this.skills.find(s => s.tag =='forceConv').mp }을 소모하여 적을 즉시 개종합니다.`},
+                { tag:'meteo', name: '⚡메테오', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 80, info:`마나 ${this.skills.find(s => s.tag =='meteo').mp }을 소모하여 광역 대미지를 입히는 메테오를 시전합니다.`}
                 //{ tag:'magic', name: '마법 공격력', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 200 , info:''}
             ],
             'stronghold': [
@@ -113,7 +115,24 @@ class GameScene extends Phaser.Scene {
 
             //this.scene.launch('SaveLoadScene');
         }
-
+        //터치이벤트
+        // 🌟 [핵심] 화면 어디든 터치(클릭)하면 실행되는 이벤트 리스너 등록
+        this.input.on('pointerdown', (pointer) => {
+            
+            // UI 창(예: 설정창)이 열려있을 때는 메테오가 안 떨어지게 막는 안전장치
+            if (this.isPaused || this.isGameOver) {
+                return; 
+            }
+            //console.log(`position : ${pointer.x}`)
+            // 터치한 위치의 X 좌표를 넘겨주며 메테오 투하!
+            const uiScene = this.scene.get('UIScene');
+            const activeSkill = uiScene.activeSkillTag; 
+            if(activeSkill=='meteo'){
+                const mob = {x :pointer.x };
+                this.handleMobClick(mob);
+            }
+            
+        });
         //배경그림
         this.setBgImage('background1');
 
@@ -476,7 +495,7 @@ class GameScene extends Phaser.Scene {
 
 
             console.log("웨이브 클리어! 잠시 휴식...");
-            this.saveLoadScene.playBGM('bgm_waveEnd',false);
+            //this.saveLoadScene.playBGM('bgm_waveEnd',false);
             return;
         }
 
@@ -498,8 +517,8 @@ class GameScene extends Phaser.Scene {
                     mob.x = config.width;
                     mob.body.setVelocityX(0);
                 }else{
-                     if (mob.x > config.width+10) {
-                        mob.x = config.width+10
+                     if (mob.x > config.width+200) {
+                        mob.x = config.width+200
                         mob.body.setVelocityX(0);
                      }
                     
@@ -573,7 +592,7 @@ class GameScene extends Phaser.Scene {
             }
             // 탈주
             if(this.isWaveInProgress==false){
-                if (mob.x > config.width || mob.y > config.height) {
+                if (mob.x >= config.width+200 || mob.y > config.height) {
                     //탈주 성공
                     console.log("적이 탈주했습니다!");  
                     mob.destroy();
@@ -637,7 +656,7 @@ class GameScene extends Phaser.Scene {
             const unlockSk = this.skills.find(sk =>sk.tag == item.tag);
             if(unlockSk !=null && unlockSk.unlock ==false){
                 unlockSk.unlock = true;
-                //console.log(this.skills);
+                console.log(this.skills);
                 this.registry.set('skills',this.skills);
                 uiScene.createSkillUI();
             }
@@ -1113,12 +1132,86 @@ class GameScene extends Phaser.Scene {
             }
         });
     }
+
+        
+    castMeteor( targetX ) {
+        const { width, height } = this.cameras.main;
+
+        // 1️⃣ 운석이 떨어질 목표 지점 (X: 랜덤 혹은 타겟 몹 위치, Y: 바닥 높이)
+        //const targetX = Phaser.Math.Between(100, width - 100); 
+        const targetY = height - this.groundHeight - 30; // 바닥 위 살짝 위쪽 위치
+
+        // 2️⃣ 하늘 위 생성 좌표 (목표 지점보다 왼쪽 위에서 사선으로 떨어지게 연출)
+        const startX = targetX + Phaser.Math.Between(-200,200);
+        const startY = -50; // 화면 밖 하늘 위
+
+        // 3️⃣ 운석 스프라이트 생성
+        const meteor = this.add.sprite(startX, startY, 'meteorSprite').setScale(0.8);
+        meteor.setDepth(4);
+        // 필요하다면 날아가는 애니메이션 재생
+        meteor.anims.play('meteo_anim'); 
+
+        // 4️⃣ 트윈(Tween)을 이용해 하늘에서 땅으로 부드럽게 떨어뜨리기
+        this.tweens.add({
+            targets: meteor,
+            x: targetX,
+            y: targetY,
+            duration: 800, // 0.8초 동안 낙하
+            ease: 'Cubic.easeIn', // 갈수록 빨라지는 중력 효과 연출
+            onComplete: () => {
+                // 바닥에 닿는 순간!
+                meteor.destroy(); // 운석 오브젝트 제거
+                this.explodeMeteor(targetX, targetY); // 폭발 및 데미지 검사 실행
+            }
+        });
+    }
+
+    explodeMeteor(x, y) {
+        // 5️⃣ 바닥 폭발 이펙트 연출
+        const explosion = this.add.sprite(x, y, 'explosionSprite').setScale(1.5).setOrigin(0.5,0.7);
+        explosion.setDepth(20);
+        
+        // 폭발 애니메이션 재생 후 이펙트 자동 제거
+        explosion.anims.play('explosion_anim');
+        explosion.on('animationcomplete', () => {
+            explosion.destroy();
+        });
+
+        // 🎧 폭발 효과음 재생 (중첩 허용)
+        this.saveLoadScene.playSound('meteo_bomb',2,false);
+
+        // 6️⃣ 💥 [핵심] Mobs 오브젝트들과 거리 검사 (광역 데미지)
+        const damageRadius = 160; // 폭발 반경 (픽셀 단위)
+        //const meteorDamage = 50;  // 메테오 기본 데미지
+
+        // 그룹 내의 모든 몹들을 순회하며 거리 측정
+        // 'this.mobs'는 몹들이 담긴 Phaser.GameObjects.Group 혹은 배열이라고 가정합니다.
+        this.mobs.getChildren().forEach((mob) => {
+            if (!mob || !mob.active) return; // 이미 죽은 몹은 패스
+
+            // Phaser의 내장 수학 함수를 이용해 폭발 중심(x, y)과 몹(mob.x, mob.y) 사이의 거리를 구합니다.
+            const distance = Phaser.Math.Distance.Between(x, y, mob.x, mob.y);
+
+            // 지정한 폭발 반경 안에 몹이 들어와 있다면?
+            if (distance <= damageRadius) {
+                console.log(`${mob.name || '몬스터'}가 메테오 범위 내에 있음! 거리: ${Math.round(distance)}px`);
+                
+                // [선택 사항] 중심에 가까울수록 더 큰 데미지를 주고 싶다면? (스플래시 데미지 공식)
+                // const proximity = 1 - (distance / damageRadius); // 중심일수록 1, 가장자리일수록 0에 수렴
+                // const finalDamage = Math.round(meteorDamage * proximity);
+                
+                // 몹에게 데미지 입히기 함수 호출
+                this.fadeOutAndDestroy(this, mob);
+            }
+        });
+    }
+
     //스킬사용
         /**
      * 몹을 직접 클릭했을 때 실행되는 액션 마스터 함수
      * @param {Phaser.GameObjects.Sprite} mob - 클릭당한 몹 객체
      */
-    handleMobClick(mob) {
+    handleMobClick(mob ) {
         // 1. UI 씬을 가져와서 현재 토글(장전)된 스킬이 있는지 확인합니다.
         if(mob.hp<=0) return;
         const uiScene = this.scene.get('UIScene');
@@ -1145,6 +1238,7 @@ class GameScene extends Phaser.Scene {
             } 
             // 💥 [스킬 2] 저주 (Curse) 발동
             else if (activeSkill === 'curse') {
+                
                 console.log(`💀 ${skill.name} 발동! ${mob.name}가 즉시 사망합니다`);
                 this.fadeOutAndDestroy(this, mob);
                 this.saveLoadScene.playSound('curse',3,false);
@@ -1158,6 +1252,11 @@ class GameScene extends Phaser.Scene {
                 this.stat.manPower++;
                 this.saveLoadScene.playSound('holy');
                 this.createBeamEffect(mob.x, config.height-this.groundHeight , 1200 , '0xffcc00', 50);
+            }
+            else if (activeSkill === 'meteo') {
+                console.log(`👥 ${skill.name} 가 떨어집니다`);
+                this.saveLoadScene.playSound('meteo_fire',2);
+                this.castMeteor( mob.x );
             }
             // 3. ⏱️ 스킬을 성공적으로 썼으므로 쿨타임을 적용합니다.
             skill.cooltime = skill.maxCooltime;
@@ -1261,13 +1360,17 @@ class GameScene extends Phaser.Scene {
             data.stat.archerCost = this.stat.archerCost;
 
             if(data.skills ==null) data.skills = this.skills;
-            for(let i =0 ; i< data.skills.length ; i++){
-                data.skills[i].maxCooltime = this.skills[i].maxCooltime;
-                data.skills[i].mp = this.skills[i].mp;
-                data.skills[i].name = this.skills[i].name;
-                //data.skills[i].unlock = this.skills[i].unlock;//테스트
+            for(let i =0 ; i< this.skills.length ; i++){
+                if(data.skills[i]== undefined){
+                    data.skills[i] = this.skills[i];
+                }else{
+                    data.skills[i].maxCooltime = this.skills[i].maxCooltime;
+                    data.skills[i].mp = this.skills[i].mp;
+                    data.skills[i].name = this.skills[i].name;
+                    //data.skills[i].unlock = this.skills[i].unlock;//테스트
+                }
             }
-
+            console.log(data.skills);
             this.stat = data.stat || this.stat; // 저장된 스탯이 있으면 덮어쓰기, 없으면 기존값 유지
             this.wave = data.wave || this.wave;
             this.gold = data.gold || this.gold;

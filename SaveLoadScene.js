@@ -288,30 +288,32 @@ class SaveLoadScene extends Phaser.Scene {
             const sliderWidth = 200;         // 슬라이더 총 가로 길이
 
             // 텍스트 라벨 (BGM 또는 SFX)
-            const txt = this.add.text(sliderX - 50, yPos, label, { fontSize: '24px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(1, 0.5);
+            const txt = this.add.text(sliderX - 50, yPos, label, 
+                { fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(1, 0.5);
             
             // 퍼센트 표시 텍스트 (예: 50%)
             const currentVolValue = currentVolumeType === 'bgm' ? this.gameOption.bgmVolume : this.gameOption.soundVolume;
-            const percentTxt = this.add.text(sliderX + sliderWidth + 30, yPos, `${Math.round(currentVolValue * 100)}%`, { fontSize: '24px', fill: '#3498db' }).setOrigin(0, 0.5);
+            const percentTxt = this.add.text(sliderX + sliderWidth + 30, yPos, `${Math.round(currentVolValue * 100)}%`,
+             { fontSize: '32px', fill: '#3498db' , fontWeight: 'bold'}).setOrigin(0, 0.5);
 
             // 슬라이더 배경 바 (회색)
             const track = this.add.graphics();
             track.fillStyle(0x444444, 1);
-            track.fillRect(sliderX, yPos - 15, sliderWidth, 30);
+            track.fillRect(sliderX, yPos - 20, sliderWidth, 40);
 
             // 슬라이더 게이지 바 (청색 - 현재 볼륨만큼 채워짐)
             const fill = this.add.graphics();
             const updateFill = (vol) => {
                 fill.clear();
                 fill.fillStyle(0x3498db, 1);
-                fill.fillRect(sliderX, yPos - 15, sliderWidth * vol, 30);
+                fill.fillRect(sliderX, yPos - 20, sliderWidth * vol, 40);
             };
             updateFill(currentVolValue);
 
             // 조절 손잡이 (하얀색 네모 버튼)
             // 현재 볼륨에 위치하도록 초기 X값 설정
             const handleX = sliderX + (sliderWidth * currentVolValue);
-            const handle = this.add.rectangle(handleX, yPos, 20, 35, 0xffffff);
+            const handle = this.add.rectangle(handleX, yPos, 30, 45, 0xffffff);
             handle.setInteractive({ useHandCursor: true });
             
             // 드래그 기능 활성화

@@ -26,10 +26,15 @@ class PreloadScene extends Phaser.Scene {
         //this.load.image('castle', 'assets/castle1.png');
         this.load.spritesheet('castleSprite','assets/castleSprite.png', { frameWidth: 128, frameHeight: 128 });
 
+        this.load.spritesheet('flag','assets/flag.png', { frameWidth: 128, frameHeight: 512});
+
         this.load.spritesheet('arrow', 'assets/arrow.png', { frameWidth: 48, frameHeight: 12});
         this.load.spritesheet('archer', 'assets/archer.png', { frameWidth: 128, frameHeight: 128 });
 
         this.load.spritesheet('cathedral', 'assets/cathedral.png', { frameWidth: 128, frameHeight: 128 });
+
+        this.load.spritesheet('meteorSprite', 'assets/meteo.png', { frameWidth: 128, frameHeight: 128 });
+        this.load.spritesheet('explosionSprite','assets/bomb.png', { frameWidth: 256, frameHeight: 200 });
 
         this.load.spritesheet('mobsprite1', 'assets/mobsprite1.png', { frameWidth: 128, frameHeight: 128});
         this.load.spritesheet('mobsprite2', 'assets/mobsprite2.png', { frameWidth: 128, frameHeight: 128});
@@ -66,8 +71,11 @@ class PreloadScene extends Phaser.Scene {
         this.load.audio('curse0','sfx/yodguard1.mp3');
         this.load.audio('curse1','sfx/yodguard2.mp3');
         this.load.audio('curse2','sfx/yodguard3.mp3');
-        
 
+        this.load.audio('meteo_bomb0','sfx/meteo_bomb1.wav');
+        this.load.audio('meteo_bomb1','sfx/meteo_bomb2.wav');
+        this.load.audio('meteo_fire0','sfx/meteo_fire1.wav');
+        this.load.audio('meteo_fire1','sfx/meteo_fire2.wav');
         // 3. 로딩이 완료되면 실행될 이벤트
         this.load.on('complete', () => {
             loadingText.destroy();
@@ -111,6 +119,19 @@ class PreloadScene extends Phaser.Scene {
             frameRate: 10, 
             repeat: -1
         });
+        this.anims.create({
+            key: 'meteo_anim',
+            frames: this.anims.generateFrameNumbers('meteorSprite', { start: 0, end: 1 }),
+            frameRate: 20, 
+            repeat: 0
+        });
+        this.anims.create({
+            key: 'explosion_anim',
+            frames: this.anims.generateFrameNumbers('explosionSprite', { start: 0, end: 11 }),
+            frameRate: 15, 
+            repeat: 0
+        });
+
 
         this.anims.create({
             key: 'mob1_walk',
