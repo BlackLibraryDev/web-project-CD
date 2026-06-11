@@ -16,7 +16,7 @@ class MainMenuScene extends Phaser.Scene {
         
 
         // GameScene이나 UIScene의 create() 단계에 배치
-        const fsButton = this.add.text(120, height-40, '🖥️ FULLSCREEN', {
+        const fsButton = this.add.text(120, height-40, `🖥️${this.getLangText('fullscreen')}`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '24px',
             fill: '#ffffff',
@@ -28,10 +28,10 @@ class MainMenuScene extends Phaser.Scene {
         fsButton.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen(); // 전체화면 끄기
-                fsButton.setText('🖥️ FULLSCREEN');
+                fsButton.setText(`🖥️${this.getLangText('fullscreen')}`);
             } else {
                 this.scale.startFullscreen(); // 전체화면 켜기
-                fsButton.setText('❌ EXIT FULL');
+                fsButton.setText(`❌${this.getLangText('cancel')}`);
             }
         });
 
@@ -87,7 +87,7 @@ class MainMenuScene extends Phaser.Scene {
         }).setDepth(2);
 
         // 텍스트 버튼 생성
-        const startButton = this.add.text(width *0.1, height * 0.5, '| Continue |', {
+        const startButton = this.add.text(width *0.1, height * 0.5, `| ${this.getLangText('continue')} |`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '42px',
             fill: '#ffcc00',
@@ -95,7 +95,7 @@ class MainMenuScene extends Phaser.Scene {
             strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const newGameButton = this.add.text(width *0.1, height * 0.6, '| NEW GAME |', {
+        const newGameButton = this.add.text(width *0.1, height * 0.6, `| ${this.getLangText('newGame')} |`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '42px',
             fill: '#0076d7',
@@ -103,7 +103,7 @@ class MainMenuScene extends Phaser.Scene {
             strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const howToButton = this.add.text(width *0.1, height * 0.7, '| How to Play? |', {
+        const howToButton = this.add.text(width *0.1, height * 0.7, `| ${this.getLangText('howToPlay')} |`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '32px',
             fill: '#ffffff',
@@ -111,7 +111,7 @@ class MainMenuScene extends Phaser.Scene {
             strokeThickness: 6
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
-        const settingButton = this.add.text(width *0.1, height * 0.78, '| Setting |', {
+        const settingButton = this.add.text(width *0.1, height * 0.78, `| ${this.getLangText('setting')} |`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '32px',
             fill: '#ffffff',
@@ -120,7 +120,7 @@ class MainMenuScene extends Phaser.Scene {
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
 
-        const noticeButton = this.add.text(width *0.9, height * 0.9, 'Notice', {
+        const noticeButton = this.add.text(width *0.9, height * 0.9, `${this.getLangText('notice')}`, {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '32px',
             fill: '#ffffff',
@@ -137,7 +137,7 @@ class MainMenuScene extends Phaser.Scene {
         const savedData = localStorage.getItem('projectCD_data1');
 
         if(savedData){
-            startButton.text = '| CONTINUE |';
+            //startButton.text = '| CONTINUE |';
         }
         // 클릭 시 인게임(GameScene)으로 전환
         startButton.on('pointerdown', () => {
@@ -202,5 +202,14 @@ class MainMenuScene extends Phaser.Scene {
         this.mainmenuSpawn.destroy(); // 몹 생성 타이머 제거
         this.scene.start('GameScene' ,data );
     }
-    
+
+    getLangText(key) {
+        const dict = this.registry.get('langDict');
+        const currentLang = this.registry.get('currentLang'); // 'ko' 또는 'en'
+        
+        if (dict[key] && dict[key][currentLang]) {
+            return dict[key][currentLang];
+        }
+        return key; // 번역이 없으면 키 값을 그대로 노출 (디버깅용)
+    }
 }

@@ -1,0 +1,52 @@
+key	ko	en
+title	성 지키기	Defend your Castle
+continue	계속하기	Continue
+newGame	새로시작	New Game
+howToPlay	어떻게?	How to Play?
+setting	설정	Setting
+sound	소리	Sounds
+effect	효과	Effects
+bgm	배경음	BGM
+sfx	효과음	SFX
+fullscreen	전체화면	Full Screen
+arrCount	화살 갯수	Arrows count
+arrRemain	화살 잔여시간	Arrow remain time
+many	많음	Many
+normal	보통	Normal
+few	적음	Few
+sec	초	sec
+saveClose	저장 후 닫기	Save & Close
+close	닫기	Close
+cancel	취소	Cancel
+save	저장하기	Save
+basic	기본	Basics
+garrison	주둔군	Garrisons
+archer	궁수	Archer
+witch	마녀	Witch
+fortification	축성술	Fortrification
+language	언어	Language
+ko	한국어	Korean
+en	영어	English
+lastPlayTime	마지막 플레이 시간	Last play time
+empty	비어 있음	Empty
+loadGame	불러오기	Load a Game
+saveGame	저장하기	Save a Game
+confirm	확인	Confirm
+slotIsDeleted	번째 슬롯을 삭제합니다.// 계속하시겠습니까?	slot will be deleted.// Continue?
+slotIsSaved	번째 슬롯에 진행사항이 저장됩니다.// 계속하시겠습니까?	this slot will be saved.// Continue?
+score	점수	Score
+wave	웨이브	wave
+nextWave	다음 웨이브	Next Wave
+paused	일시정지	Paused
+restart	다시 시작	Restart
+restartConfirm	정말로 재시작하겠습니까?//(페이지를 새로고침 합니다)	Are you sure about restart?\\(Refresh this web page)
+unitKill	쓰러트린 적	Unit Kills
+unitConv	개종시킨 적	Conversions
+earnGold	획득한 금화	Earning
+maintenance	유지비	Maintenance
+garrisonLoss	주둔군 손실	Garrison losses
+sum	총 금액	Sum
+stronghold	건축소	Stronghold
+cathedral	대성당	Cathedral
+barracks	훈련소	Barracks
+magichall	마녀의 샘	Witch-pit

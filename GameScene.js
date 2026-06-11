@@ -414,13 +414,18 @@ class GameScene extends Phaser.Scene {
         
         
         switch (mobData.mobNumber){
+
             case 1:
                 //기본 몹
                 mob.name = 'doorknocker';
                 mob.speed = mobData.speed || 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 1;
                 mob.score = mobData.score || 1;
+                if(this.wave.value>= 10){
+                    mob.hp = mobData.hp || 2;
+                }
             break;
+
             case 2:
                 //wallbreaker
                 mob.name = 'wallbreaker';
@@ -429,6 +434,7 @@ class GameScene extends Phaser.Scene {
                 mob.score = mobData.score || 2;
                 mob.hp = mobData.hp || 2;
             break;
+
             case 3:
                 //archer
                 mob.name = 'archer';
@@ -441,9 +447,21 @@ class GameScene extends Phaser.Scene {
                 mob.fireanime = `mob${mobData.mobNumber}_fire`;
                 mob.rangeWp ='arrow';
                 mob.attackTime = 2100;
-                mob.body.setOffset(0, Phaser.Math.Between(-15, -10)); // 히트박스 위치 조정
+                mob.body.setOffset(0, Phaser.Math.Between(-20, -10)); // 히트박스 위치 조정
                 
             break;
+
+            case 4:
+                //guard
+                mob.name = 'guard';
+                mob.speed = mobData.speed || 80 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.damage = mobData.damage || 1;
+                mob.score = mobData.score || 2;
+                mob.hp = mobData.hp || 5;
+                
+            break;
+
+
             case 10:
                 //Giant
                 mob.name = 'giant';
@@ -985,7 +1003,9 @@ class GameScene extends Phaser.Scene {
             this.events.on('update', arrow.updateRotation);
 
             // 6. 300ms 후 파괴 및 이벤트 해제
-            this.time.delayedCall(10000, () => {
+            const gameOption = this.registry.get('gameOption');
+            const arrtimer = gameOption.arrowRemainTimer || 10000;
+            this.time.delayedCall(arrtimer, () => {
                 if (arrow && arrow.active) {
                     this.events.off('update', arrow.updateRotation);
                     arrow.destroy();
@@ -1089,7 +1109,13 @@ class GameScene extends Phaser.Scene {
 
         let delayCallTime = 1100;
         let archerNumber = this.stat.archer;
-        const mobArray = this.mobs.getMatching('isDragging',false);
+        let mobArray = this.mobs.getMatching('isDragging',false);
+        for(let i = 0 ; i<mobArray.length ; i++){
+            if(mobArray[i].y < config.height*0.7){
+                mobArray.splice(i,1);
+            }
+        }
+        console.log(mobArray);
         //console.log(`드래그되지 않은 몹 수 :${mobArray.length}`); isDragging ??? 
         if(mobArray.length<=0 && targeting ==null){
             return;
@@ -1097,7 +1123,8 @@ class GameScene extends Phaser.Scene {
         this.time.delayedCall(100, () => {
             this.archer.anims.play('archer_fire', true);
         });
-        const arrowNum = archerNumber> 10 ? 10 : archerNumber;
+        const gameOption = this.registry.get('gameOption');
+        const arrowNum = archerNumber> gameOption.arrowEfCount ? gameOption.arrowEfCount : archerNumber;
         /*
         let arrowNum = archerNumber> mobArray.length? mobArray.length : archerNumber;
         arrowNum = arrowNum>10? 10 : arrowNum; // 최대 5발로 제한
@@ -1108,7 +1135,12 @@ class GameScene extends Phaser.Scene {
         }
         //화살 도착 딜레이
         this.time.delayedCall(delayCallTime, () => { 
-            const mobArray = this.mobs.getMatching('isDragging',false);
+            let mobArray = this.mobs.getMatching('isDragging',false);
+            for(let i = 0 ; i<mobArray.length ; i++){
+                if(mobArray[i].y < config.height*0.6){
+                    mobArray.splice(i,1);
+                }
+            }
             for(let i =0; i< archerNumber ; i++){
                 const target = targeting!=null? targeting :  Phaser.Utils.Array.GetRandom(mobArray);
                 if(target==null){
@@ -1284,13 +1316,13 @@ class GameScene extends Phaser.Scene {
             this.addSpawnTimer({mobNumber:1},1600);
         }
         if(this.wave.value>8){
-            this.addSpawnTimer({mobNumber:1},2200);
+            this.addSpawnTimer({mobNumber:4},5200, 2 );
         }
         if(this.wave.value>=6 && this.wave.value<10){
             this.addSpawnTimer({mobNumber:3},2200);
         }
         if(this.wave.value>=10){
-            this.addSpawnTimer({mobNumber:3},2200 , 2);
+            this.addSpawnTimer({mobNumber:3},2200);
             
         }
         if(this.wave.value>=11 && this.wave.value<12){

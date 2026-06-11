@@ -66,7 +66,7 @@ class SaveLoadScene extends Phaser.Scene {
         this.noticeWindow.add(bg);
 
         // 5️⃣ 🔤 [타이틀 텍스트] 
-        const titleTxt = this.add.text(0, -winH / 2 + 25, "Notice", { 
+        const titleTxt = this.add.text(0, -winH / 2 + 25,this.getLangText('notice'), { 
             fontSize: '24px', 
             fill: '#ffffff', 
             fontWeight: 'bold' 
@@ -220,10 +220,14 @@ class SaveLoadScene extends Phaser.Scene {
             .setOrigin(0.5);
 
         // 3️⃣ 텍스트를 생성합니다. (박스 한가운데 오도록 0, 0 지정)
-        const txt = this.add.text(0, 0, text, {
-            fontSize: '24px',
+        const txt = this.add.text(0, 0, text, 
+            {fontSize: '24px',
             fill: '#ffffff',
-            padding: { x: 5, y: 5 }
+            fontStyle: 'bold',
+            stroke: '#000000',
+            padding: { x: 5, y: 5 },
+            strokeThickness: 3 
+            
         }).setOrigin(0.5);
 
         // 4️⃣ 컨테이너 바구니안에 박스와 텍스트를 차례대로 집어넣습니다.
@@ -246,6 +250,7 @@ class SaveLoadScene extends Phaser.Scene {
         // 1️⃣ 기존 컨테이너 및 리스너 완전 청소 (메모리 누수 방지)
         if (this.optionWindow) {
             this.optionWindow.destroy();
+            this.optionWindow=null;
         }
         if(!visible){
             return;   
@@ -265,7 +270,7 @@ class SaveLoadScene extends Phaser.Scene {
             // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
             //this.optionWindow.setVisible(false);
         });
-         this.titleTxt = this.add.text(width / 2, 100, 'Setting', {
+         this.titleTxt = this.add.text(width / 2, 100, this.getLangText('setting'), {
             fontFamily: 'Arial Black, sans-serif',
             fontSize: '36px',
             fill: '#ffffff',
@@ -275,26 +280,27 @@ class SaveLoadScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(2);
         this.optionWindow.add(this.titleTxt);
 
+        const posX = 140;
+        let posY = 240;
+
+        const itemContainer =this.add.container(0,0).setDepth(3);
         // ==========================================
         // 🔊 5️⃣ 볼륨 슬라이더 생성 구역
         // ==========================================
-        
-        // 현재 게임 시스템의 볼륨 값을 가져옵니다. (없다면 기본값 0.5)
-        // 실제 Phaser 사운드 매니저와 연동하려면 초기값을 기입해 둡니다.
 
         // 슬라이더 배치 함수 정의 (BGM용 하나, SFX용 하나를 그리기 위함)
-        const createVolumeSlider = (yPos, label, currentVolumeType) => {
-            const sliderX = width / 2 - 100; // 슬라이더 바 시작 X 좌표
+        const createVolumeSlider = (xPos, yPos, label, currentVolumeType) => {
+            const sliderX = xPos // width / 2 - 100; // 슬라이더 바 시작 X 좌표
             const sliderWidth = 200;         // 슬라이더 총 가로 길이
 
             // 텍스트 라벨 (BGM 또는 SFX)
-            const txt = this.add.text(sliderX - 50, yPos, label, 
-                { fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(1, 0.5);
+            const txt = this.add.text(sliderX - 120, yPos, label, 
+                { fontFamily: 'Arial Black, sans-serif', fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(0, 0.5);
             
             // 퍼센트 표시 텍스트 (예: 50%)
             const currentVolValue = currentVolumeType === 'bgm' ? this.gameOption.bgmVolume : this.gameOption.soundVolume;
             const percentTxt = this.add.text(sliderX + sliderWidth + 30, yPos, `${Math.round(currentVolValue * 100)}%`,
-             { fontSize: '32px', fill: '#3498db' , fontWeight: 'bold'}).setOrigin(0, 0.5);
+             { fontFamily: 'Arial Black, sans-serif', fontSize: '32px', fill: '#3498db' , fontWeight: 'bold'}).setOrigin(0, 0.5);
 
             // 슬라이더 배경 바 (회색)
             const track = this.add.graphics();
@@ -351,42 +357,163 @@ class SaveLoadScene extends Phaser.Scene {
             });
 
             // 컨테이너에 UI 부품들 몽땅 집어넣기
-            this.optionWindow.add([txt, percentTxt, track, fill, handle]);
+            itemContainer.add([txt, percentTxt, track, fill, handle]);
         };
+        
+        const flag = this.add.sprite(140, 0,'flag');
+        flag.displayWidth =256;
+        flag.displayHeight=1024;
+        flag.y =256;
+        
+        this.optionWindow.add(flag);
 
         // 6️⃣ 원하는 Y 높이에 볼륨바 배치 실행
-        createVolumeSlider(height / 2 - 30, 'BGM', 'bgm'); // 상단에 BGM 슬라이더
-        createVolumeSlider(height / 2 + 50, 'SFX', 'sfx'); // 하단에 SFX 슬라이더
-
-        const posX = 130;
-        const posY = 240;
-
-        const itemContainer =this.add.container(0,0).setDepth(3);
-
-        const bt1 = this.makeButton(160,50,posX, posY +0, "사운드");
-        bt1.on('pointerdown', (pointer) => {
+        
+        const optionPages = (value ='sound') => {
+            bt1.text.setText(`${this.getLangText('sound')}`)
+            bt2.text.setText(`${this.getLangText('effect')}`)
+            bt3.text.setText(`${this.getLangText('language')}`)
+            bt1.text.setFontSize(32);
+            bt2.text.setFontSize(32);
+            bt3.text.setFontSize(32);
+            posY = 240;
             itemContainer.removeAll(true);
+            if(value=='sound' || value=='all'){
+                bt1.text.setText(`*${this.getLangText('sound')}`)
+                bt1.text.setFontSize(36);
+                createVolumeSlider(posX+280, posY + 0, this.getLangText('bgm'), 'bgm'); // 상단에 BGM 슬라이더
+                createVolumeSlider(posX+280, posY + 80, this.getLangText('sfx'), 'sfx'); // 하단에 SFX 슬라이더
+                posY += 200;
+            }
+            if(value=='effect'||value =='all'){
+                bt2.text.setText(`*${this.getLangText('effect')}`);
+                bt2.text.setFontSize(36);
+                const bt01  = this.add.text(posX+140, posY +0, this.getLangText('arrCount'), 
+                { fontFamily: 'Arial Black, sans-serif', fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(0, 0.5);
+            
+                const bt02 = this.makeButton(120,50,posX+380+130, posY +0, "많음(10)");
+
+                const bt03  = this.add.text(posX+140, posY +80, this.getLangText('arrRemain'), 
+                { fontFamily: 'Arial Black, sans-serif', fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(0, 0.5);
+            
+                const bt04 = this.makeButton(100,50,posX+370+130, posY +80, "10초");
+                const arc = () =>{
+                    if(this.gameOption.arrowEfCount>=15){
+                        bt02.text.setText(`${this.getLangText('many')}(${this.gameOption.arrowEfCount})`);
+                    }else if(this.gameOption.arrowEfCount==10){
+                        bt02.text.setText(`${this.getLangText('normal')}(${this.gameOption.arrowEfCount})`);
+                    }else{
+                        bt02.text.setText(`${this.getLangText('few')}(${this.gameOption.arrowEfCount})`);
+                    }  
+
+                    if(this.gameOption.arrowRemainTimer>=10000){
+                        bt04.text.setText(`10${this.getLangText('sec')}`);
+                    }else if(this.gameOption.arrowRemainTimer>= 6000){
+                        bt04.text.setText(`6${this.getLangText('sec')}`);
+                    }else{
+                        bt04.text.setText(`3${this.getLangText('sec')}`);
+                    }
+                }
+                bt02.on('pointerdown', (pointer) => {
+                    if(this.gameOption.arrowEfCount==15){
+                        this.gameOption.arrowEfCount = 10;
+                    }else if(this.gameOption.arrowEfCount==10){
+                        this.gameOption.arrowEfCount = 6;
+                    }else{
+                        this.gameOption.arrowEfCount = 15;
+                    }
+                    arc();
+                });
+                bt04.on('pointerdown', (pointer) => {
+                    if(this.gameOption.arrowRemainTimer>=10000){
+                        this.gameOption.arrowRemainTimer = 6000;
+                    }else if(this.gameOption.arrowRemainTimer>=6000){
+                        this.gameOption.arrowRemainTimer = 3000;
+                    }else{
+                        this.gameOption.arrowRemainTimer =10000;
+                    }
+                    arc();
+                });
+                arc();
+                itemContainer.add([bt01,bt02, bt03,bt04]);
+            }
+            if(value=='general' || value=='all'){
+                bt3.text.setText(`*${this.getLangText('language')}`)
+                bt3.text.setFontSize(36);
+                
+                const bt31  = this.add.text(posX+140, posY +0, this.getLangText('language'), 
+                { fontFamily: 'Arial Black, sans-serif', fontSize: '32px', fill: '#ffffff', fontWeight: 'bold' }).setOrigin(0, 0.5);
+            
+                const bt32 = this.makeButton(160,50,posX+380+90, posY +0, "한국어");
+                const arc = () =>{
+                    //bt31.text.setText(this.getLangText('language') );
+                    bt32.text.setText(this.getLangText(this.gameOption.currentLang) );
+                }
+                bt32.on('pointerdown', (pointer) => {
+                    if(this.gameOption.currentLang =='en'){
+                        this.gameOption.currentLang ='ko';
+                        
+                    }else{
+                        this.gameOption.currentLang ='en';
+                    }
+                    const tsvData = this.cache.text.get('langTable');
+                    this.registry.set('currentLang', this.gameOption.currentLang ); 
+                    this.registry.set('langDict', this.parseTSV(tsvData));
+                    arc();
+                });
+                arc();
+                itemContainer.add([bt31, bt32])
+            }
+        }
+        
+        
+
+        const bt1 = this.makeButton(160,50,posX, posY +5, "사운드");
+        bt1.box.setAlpha(0);
+        bt1.on('pointerdown', (pointer) => {
+            
+           optionPages('sound');
         });
         this.optionWindow.add(bt1);
 
-        const xbt = this.makeButton(120,50, width/2 +90, height-50, "취소");
+        const bt2 = this.makeButton(160,50,posX, posY +75, "효과");
+        bt2.box.setAlpha(0);
+        bt2.on('pointerdown', (pointer) => {
+           optionPages('effect');
+        });
+        this.optionWindow.add(bt2);
+
+        const bt3 = this.makeButton(160,50,posX, posY +145, "일반");
+        bt3.box.setAlpha(0);
+        bt3.on('pointerdown', (pointer) => {
+           optionPages('general');
+        });
+        this.optionWindow.add(bt3);
+
+        const xbt = this.makeButton(120,50, width/2 +90, height-50, this.getLangText('close'));
         xbt.on('pointerdown', (pointer) => {
             this.loadOption();
             this.bgm.setVolume(this.gameOption.bgmVolume);
-            itemContainer.removeAll(true);
-            this.drawOptionList(false);
+            this.optionWindow.clearData();
         });
         this.optionWindow.add(xbt);
+        optionPages();
 
-        const savebt = this.makeButton(200,50, width/2-90, height-50, "💾저장 후 닫기");
+        
+        const savebt = this.makeButton(200,50, width/2-90, height-50, `💾${this.getLangText('saveClose')}`);
         savebt.on('pointerdown', (pointer) => {
             this.saveOption();
             this.bgm.setVolume(this.gameOption.bgmVolume);
-            itemContainer.removeAll(true);
-            this.drawOptionList(false);
+            this.optionWindow.clearData();
         });
         this.optionWindow.add(savebt);
 
+
+        this.optionWindow.add(itemContainer);
+        this.optionWindow.clearData = () =>{
+            itemContainer.removeAll(true);
+            this.drawOptionList(false);
+        }
     }
 
 
@@ -411,7 +538,7 @@ class SaveLoadScene extends Phaser.Scene {
             // 아무것도 작성하지 않거나, 빈 곳 클릭 시 창이 닫히게 하고 싶다면 기입 가능
             //this.howToWindow.setVisible(false);
         });
-         this.titleTxt = this.add.text(width / 2, 100, 'How to Play?', {
+         this.titleTxt = this.add.text(width / 2, 100, this.getLangText('howToPlay'), {
             fontFamily: 'Arial Black, sans-serif',
             fontSize: '36px',
             fill: '#ffffff',
@@ -421,8 +548,15 @@ class SaveLoadScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(2);
         this.howToWindow.add(this.titleTxt);
 
-        const posX = 130;
-        const posY = 240;
+        const flag = this.add.sprite(140, 0,'flag');
+        flag.displayWidth =256;
+        flag.displayHeight=1024;
+        flag.y =256;
+        
+        this.howToWindow.add(flag);
+
+        const posX = 60;
+        const posY = 250;
         const listWidth = 920;
         
 
@@ -437,7 +571,7 @@ class SaveLoadScene extends Phaser.Scene {
 게임이 끝난 후 획득한 💰재화로 업그레이드를 진행합니다.
 업그레이드는 총 4개의 카테고리가 있으며 업그레이드를 해금하거나 등급을 상승시킵니다.`
         
-        const txt = this.add.text( posX*2 +20, posY-20, txt0,{ 
+        const txt = this.add.text( 270, 220, txt0,{ 
             fontSize: '24px', 
             fill: '#ffffff',
             padding: { x: 5, y: 5 },
@@ -448,14 +582,18 @@ class SaveLoadScene extends Phaser.Scene {
 
         const itemContainer =this.add.container(0,0).setDepth(3);
 
-        const bt1 = this.makeButton(160,50,posX, posY +0, "기본");
+        const bt1 = this.makeButton(160,50,posX, posY +0, `${this.getLangText('basic')}`);
+        bt1.box.setAlpha(0);
+        bt1.text.setOrigin(0,0.5).setFontSize(36);
         bt1.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             txt.setText(txt0);
         });
         this.howToWindow.add(bt1);
 
-        const bt2 = this.makeButton(160,50,posX,posY +80, "주둔군");
+        const bt2 = this.makeButton(160,50,posX,posY +80, `${this.getLangText('garrison')}`);
+        bt2.box.setAlpha(0);
+        bt2.text.setOrigin(0,0.5).setFontSize(36);
         bt2.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             const cath = this.add.sprite(360,260 ,'cathedral').setDisplaySize(128,128); 
@@ -471,7 +609,9 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.howToWindow.add(bt2);
 
-        const bt2_1 = this.makeButton(180,40,posX+20,posY +140, "주둔군-🏹궁수");
+        const bt2_1 = this.makeButton(180,40,posX+20,posY +140, `${this.getLangText('garrison')}-${this.getLangText('archer')}`);
+        bt2_1.box.setAlpha(0);
+        bt2_1.text.setOrigin(0,0.5);
         bt2_1.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             const archer = this.add.sprite(900, 330, 'archer');
@@ -488,7 +628,9 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.howToWindow.add(bt2_1);
 
-        const bt2_2 = this.makeButton(180,40,posX+20,posY +195, "주둔군-🪄마녀");
+        const bt2_2 = this.makeButton(180,40,posX+20,posY +195, `${this.getLangText('garrison')}-${this.getLangText('witch')}`);
+        bt2_2.box.setAlpha(0);
+        bt2_2.text.setOrigin(0,0.5);
         bt2_2.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             txt.setText( `🪄마녀의 샘 에서 👥예비인력을 소모하여 🪄마녀를 채용할 수 있습니다.
@@ -502,7 +644,9 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.howToWindow.add(bt2_2);
 
-        const bt3 = this.makeButton(160,50,posX,posY +270, "축성술");
+        const bt3 = this.makeButton(160,50,posX,posY +270, this.getLangText('fortification'));
+        bt3.box.setAlpha(0);
+        bt3.text.setOrigin(0,0.5).setFontSize(36);
         bt3.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             const castle0 = this.add.sprite(width *0.37, 440, 'castleSprite').setScale(0.8);
@@ -530,7 +674,8 @@ class SaveLoadScene extends Phaser.Scene {
         });
         this.howToWindow.add(bt3);
 
-        const xbt = this.makeButton(160,50, width/2, height-50, "닫기");
+        const xbt = this.makeButton(160,50, width/2, height-50, this.getLangText('close'));
+        xbt.box.setAlpha(0);
         xbt.on('pointerdown', (pointer) => {
             itemContainer.removeAll(true);
             this.drawHowToList(false);
@@ -625,7 +770,7 @@ class SaveLoadScene extends Phaser.Scene {
 
             if (saveData.isEmpty) {
                 waveText = this.add.text(startX - slotWidth / 2 + 20, y - 30, `SLOT ${slotIndex}`, titleStyle);
-                infoText = this.add.text(startX - slotWidth / 2 + 20, y + 10, `비어 있음`, { ...bodyStyle, fill: '#777777' });
+                infoText = this.add.text(startX - slotWidth / 2 + 20, y + 10, `${this.getLangText('empty')}`, { ...bodyStyle, fill: '#777777' });
                 versionText = this.add.text(startX + slotWidth / 2 - 20, y + slotHeight / 2 - 15, '', verStyle);
                 dayText = this.add.text(startX + slotWidth / 2 - 20, y  - 20, '', dayStyle);
                 xBt = this.add.text(startX + slotWidth / 2 - 30, y - 35, ``, xStyle);
@@ -634,9 +779,9 @@ class SaveLoadScene extends Phaser.Scene {
                 waveText = this.add.text(startX - slotWidth / 2 + 20, y - 30,
                      `WAVE : ${saveData.wave.value}`, titleStyle);
                 infoText = this.add.text(startX - slotWidth / 2 + 20, y + 10, 
-                    `점수: ${saveData.score} | 💰: ${saveData.gold}G | 🏹: ${saveData.stat.archer} | 🪄: ${saveData.stat.witch}`, bodyStyle);
+                    `${this.getLangText('score')}: ${saveData.score} | 💰: ${saveData.gold}G | 🏹: ${saveData.stat.archer} | 🪄: ${saveData.stat.witch}`, bodyStyle);
                 versionText = this.add.text(startX + slotWidth / 2 - 10, y +45, `ver. ${saveData.version}`, verStyle);
-                dayText = this.add.text(startX - slotWidth / 2 + 20, y +40, `마지막 플레이 시간: ${saveData.lastPlayTime}`, dayStyle);
+                dayText = this.add.text(startX - slotWidth / 2 + 20, y +40, `${this.getLangText('lastPlayTime')}: ${saveData.lastPlayTime}`, dayStyle);
                 xBt = this.add.text(startX + slotWidth / 2 - 30, y - 35, `❎`, xStyle);
             }
             
@@ -657,7 +802,7 @@ class SaveLoadScene extends Phaser.Scene {
                 if (event) event.stopPropagation();
 
                  this.showConfirmPopup(
-                    `${slotIndex}번째 슬롯을 삭제합니다.\n계속하시겠습니까?`, 
+                    `${slotIndex} ${this.getLangText('slotIsDeleted')}`, 
                     () => {
                         localStorage.removeItem(`${this.storageName}${slotIndex}`);
                         this.saveWindowVisible(false);
@@ -676,7 +821,7 @@ class SaveLoadScene extends Phaser.Scene {
                             
                     }else{
                         this.showConfirmPopup(
-                            `게임 진행 상황이 ${slotIndex}번째 슬롯에 저장됩니다.\n계속하시겠습니까?`, 
+                            `${slotIndex} ${this.getLangText('slotIsSaved')}`, 
                             () => {
                                 
                                 this.saveWindowVisible(false);
@@ -727,11 +872,11 @@ class SaveLoadScene extends Phaser.Scene {
         }
         this.saveWindow.setVisible(visible);
         if(key=='dataload'){
-            this.titleTxt.setText('불러오기');
+            this.titleTxt.setText(this.getLangText('loadGame'));
 
         }
         if(key=='savedata'){
-            this.titleTxt.setText('저장하기');
+            this.titleTxt.setText(this.getLangText('saveGame'));
         }
     }
     /**
@@ -764,6 +909,7 @@ class SaveLoadScene extends Phaser.Scene {
             soundVolume:0
         }*/
         localStorage.setItem('projectCD_saveOption', JSON.stringify(this.gameOption));
+        this.registry.set('gameOption', this.gameOption);
     }
     loadOption(){
         const saveOption = localStorage.getItem('projectCD_saveOption');
@@ -775,11 +921,14 @@ class SaveLoadScene extends Phaser.Scene {
             if(data.bgmVolume ==null) data.bgmVolume =0;
             if(data.soundVolume==null) data.soundVolume = 0;
             if(data.arrowEfCount ==null) data.arrowEfCount = 10;
-                        
+            if(data.arrowRemainTimer ==null) data.arrowRemainTimer = 10000;
+            if(data.currentLang==null) data.currentLang ='ko';
+            
             this.autoSkillHold = data.autoSkillHold;
             this.loadGameData = data.loadGameData;
             this.gameOption = data;
-            console.log(`환경설정을 불러왔습니다`,data);
+            this.registry.set('gameOption', this.gameOption);
+            //console.log(`환경설정을 불러왔습니다`,data);
         }
     }
 
@@ -805,7 +954,7 @@ class SaveLoadScene extends Phaser.Scene {
     saveGameRawData(storageName, rawData){
         localStorage.setItem(storageName, JSON.stringify(rawData));
         
-        console.log('💾 게임이 안전하게 저장되었습니다!', rawData);
+        console.log(`💾 게임이 안전하게 저장되었습니다!`, rawData);
     }
     showOkPopup(message, onConfirm){
         if (this.okPopup) return;
@@ -843,7 +992,7 @@ class SaveLoadScene extends Phaser.Scene {
         const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
         console.log(message);
 
-        const yesButton = this.add.text(width / 2 , height * 0.58, '[ Confirm ]', { ...textStyle, fontSize:'32px', fill: '#ffffff' })
+        const yesButton = this.add.text(width / 2 , height * 0.58, this.getLangText('confirm'), { ...textStyle, fontSize:'32px', fill: '#ffffff' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         this.okPopup.add([overlay, box, titleText, yesButton]);
@@ -899,10 +1048,10 @@ class SaveLoadScene extends Phaser.Scene {
         const titleText = this.add.text(width / 2, height * 0.45, message, textStyle).setOrigin(0.5);
 
         // 버튼 생성
-        const yesButton = this.add.text(width / 2 - 80, height * 0.58, '[ YES ]', { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
+        const yesButton = this.add.text(width / 2 - 80, height * 0.58, this.getLangText('confirm'), { ...textStyle, fontSize:'32px', fill: '#ffcc00' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        const noButton = this.add.text(width / 2 + 80, height * 0.58, '[ NO ]', { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
+        const noButton = this.add.text(width / 2 + 80, height * 0.58, this.getLangText('cancel'), { ...textStyle, fontSize:'32px', fill: '#aaaaaa' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         this.confirmPopup.add([overlay, box, titleText, yesButton, noButton]);
@@ -969,25 +1118,58 @@ class SaveLoadScene extends Phaser.Scene {
             console.log('false');
             return;
         }
-    const vol0 = this.gameOption.bgmVolume;
-    let vol = 1;
-    
-    // 🌟 화살표 함수를 사용하므로, 내부에서 스스로를 지우기 위해 
-    // 클래스 변수(this.fadeout) 형태로 타이머를 선언합니다.
-    this.fadeout = this.time.addEvent({
-        delay: 100,
-        callback: () => { // ⭕ function() 대신 화살표 함수 구문 사용!
-            vol -= 0.05;
-            this.bgm.setVolume(vol * vol0); 
-            
-            if (vol <= 0) {
-                // 1️⃣ 볼륨 감소용 타이머 이벤트를 확실하게 파괴하여 루프를 멈춥니다.
-                this.fadeout.destroy(); 
-                this.bgm.stop(); 
-                console.log("BGM 페이드아웃 완료");
+        const vol0 = this.gameOption.bgmVolume;
+        let vol = 1;
+        
+        // 🌟 화살표 함수를 사용하므로, 내부에서 스스로를 지우기 위해 
+        // 클래스 변수(this.fadeout) 형태로 타이머를 선언합니다.
+        this.fadeout = this.time.addEvent({
+            delay: 100,
+            callback: () => { // ⭕ function() 대신 화살표 함수 구문 사용!
+                vol -= 0.05;
+                this.bgm.setVolume(vol * vol0); 
+                
+                if (vol <= 0) {
+                    // 1️⃣ 볼륨 감소용 타이머 이벤트를 확실하게 파괴하여 루프를 멈춥니다.
+                    this.fadeout.destroy(); 
+                    this.bgm.stop(); 
+                    //console.log("BGM 페이드아웃 완료");
+                }
+            },
+            loop: true
+        });
+    }
+
+    getLangText(key) {
+        const dict = this.registry.get('langDict');
+        const currentLang = this.registry.get('currentLang'); // 'ko' 또는 'en'
+        
+        if (dict[key] && dict[key][currentLang]) {
+            return dict[key][currentLang];
+        }
+        return key; // 번역이 없으면 키 값을 그대로 노출 (디버깅용)
+    }
+    parseTSV(text) {
+        const lines = text.split('\n');
+        const headers = lines[0].replace('\r', '').split('\t'); // 첫 줄 (key, ko, en...)
+        
+        const dict = {};
+
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue; // 빈 줄 패스
+
+            const currentLine = lines[i].replace('\r', '').split('\t');
+            const key = currentLine[0]; // 식별 키 (예: game_title)
+
+            dict[key] = {};
+            for (let j = 1; j < headers.length; j++) {
+                const langCode = headers[j];     // 언어 코드 (ko, en)
+                const translation = currentLine[j]; // 번역된 문장
+                dict[key][langCode] = translation.replace('//','\n');
             }
-        },
-        loop: true
-    });
-}
+        }
+        
+        // 결과 구조: { game_title: { ko: "디펜스 성 지키기", en: "Defense Castle" }, ... }
+        return dict;
+    }
 }

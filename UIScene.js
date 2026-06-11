@@ -334,7 +334,7 @@ class UIScene extends Phaser.Scene {
         });
     }
     updateScore(points) {
-        this.scoreText.setText('Score: ' + points);
+        this.scoreText.setText(`${this.getLangText('score')} : ` + points);
     }
     drawWaveBar(graphics){
         
@@ -359,7 +359,7 @@ class UIScene extends Phaser.Scene {
             y= -300;
             maxWidth = 100;
             mptxt = 'MP: ';
-            mptxtend='    ';
+            mptxtend='  ';
         }else{
             //mptxt = `🪄x${this.stat.witch} `;
             //mptxtend =`           `;
@@ -509,46 +509,70 @@ class UIScene extends Phaser.Scene {
         this.statTexts.witch.setDepth(22);
 
         if(this.nextWaveBtn){
-            this.nextWaveBtn.setText(`다음 웨이브${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
+            this.nextWaveBtn.setText(`${this.getLangText('nextWave')}${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
         }
     }
     drawPauseMenu(){
         const { width, height } = this.cameras.main;
         this.pauseMenu = this.add.container(0, 0).setVisible(this.isPaused);
         const pauseBg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.7);
-        const pauseText = this.add.text(width/2, height/2 -180, 'PAUSED', { fontSize: '48px', fill: '#ffffff' }).setOrigin(0.5);
-        const pauseInfoText = this.add.text(width/2,height/2-140, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
-        this.pauseMenu.add([pauseBg, pauseText, pauseInfoText]);
+        this.pauseMenu.add(pauseBg);
+        
+        const flag = this.add.sprite(width/2, 0,'flag');
+        flag.displayWidth =256;
+        flag.displayHeight=1024;
+        flag.y =196;
+        
+        this.pauseMenu.add(flag);
+
+        
+        
+        const pauseText = this.add.text(width/2, height/2 -180, this.getLangText('paused'), 
+            {fontSize: '48px',
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3 }
+        ).setOrigin(0.5).setDepth(5);
+        //const pauseInfoText = this.add.text(width/2,height/2-140, 'Please press ⏸ icon or ESC key to continue',{ fontSize: '24px', fill: '#ffffff' }).setOrigin(0.5);
+        this.pauseMenu.add(pauseText);
 
         const Ypos = 200;
-        const howToBt = this.makeButton(200,50, width/2, Ypos+65, 'How to Play');
+
+        
+
+        const howToBt = this.makeButton(200,50, width/2, Ypos+65, this.getLangText('howToPlay'));
+        howToBt.box.setAlpha(0);
         howToBt.on('pointerdown', () => {
              this.saveLoadScene.drawHowToList();
         });
         //환경설정버튼
-         const optionBt = this.makeButton(200,50, width/2, Ypos+130, 'Setting');
+         const optionBt = this.makeButton(200,50, width/2, Ypos+130, this.getLangText('setting'));
+         optionBt.box.setAlpha(0);
         optionBt.on('pointerdown', () => {
              this.saveLoadScene.drawOptionList();
         });
 
 
          //전체화면버튼
-        const fullscBt = this.makeButton(200,50, width/2, Ypos+195, '🖥️Fullscreen');
+        const fullscBt = this.makeButton(200,50, width/2, Ypos+195, `🖥️${this.getLangText('fullscreen')}`);
+        fullscBt.box.setAlpha(0);
         fullscBt.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen(); // 전체화면 끄기
-                fullscBt.text.setText('🖥️Fullscreen');
+                fullscBt.text.setText(`🖥️${this.getLangText('fullscreen')}`);
             } else {
                 this.scale.startFullscreen(); // 전체화면 켜기
-                fullscBt.text.setText('❌Exit Full');
+                fullscBt.text.setText(`❌${this.getLangText('cancel')}`);
             }
         });
 
         //재시작버튼
-        const restartBt = this.makeButton(200,50,width/2,Ypos+260, 'Restart');
+        const restartBt = this.makeButton(200,50,width/2,Ypos+260, this.getLangText('restart'));
+        restartBt.box.setAlpha(0);
         restartBt.on('pointerdown', () => {
 
-            this.saveLoadScene.showConfirmPopup( '정말로 재시작하겠습니까?\n(페이지를 새로고침 합니다)',
+            this.saveLoadScene.showConfirmPopup(this.getLangText('restartConfirm') ,
                 
                 () => {
                     this.restartGame();
@@ -558,7 +582,8 @@ class UIScene extends Phaser.Scene {
         });
 
         //닫기버튼
-         const closeBt = this.makeButton(200,50, width/2, Ypos+340, 'Close');
+         const closeBt = this.makeButton(200,50, width/2, Ypos+340, this.getLangText('close'));
+         closeBt.box.setAlpha(0);
         closeBt.on('pointerdown', () => {
              this.togglePause();
         });
@@ -580,10 +605,14 @@ class UIScene extends Phaser.Scene {
             .setOrigin(0.5);
 
         // 3️⃣ 텍스트를 생성합니다. (박스 한가운데 오도록 0, 0 지정)
-        const txt = this.add.text(0, 0, text, {
-            fontSize: '24px',
+        const txt = this.add.text(0, 0, text, 
+            {fontSize: '28px',
             fill: '#ffffff',
-            padding: { x: 5, y: 5 }
+            fontStyle: 'bold',
+            stroke: '#000000',
+            padding: { x: 5, y: 5 },
+            strokeThickness: 3 
+            
         }).setOrigin(0.5);
 
         // 4️⃣ 컨테이너 바구니안에 박스와 텍스트를 차례대로 집어넣습니다.
@@ -651,31 +680,31 @@ class UIScene extends Phaser.Scene {
         this.time.delayedCall(300 , () => {
             
             
-            txtMobs.setText(`⚔️ 쓰러트린 적 : ${data.mobNumber} 마리`);
+            txtMobs.setText(`⚔️ ${this.getLangText(`unitKill`)} : ${data.mobNumber} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         this.time.delayedCall(600 , () => {
             this.saveLoadScene.playBGM('bgm_waveEnd',false);
-            txtConv.setText(`👥 개종시킨 적 : ${data.earnManpower} 마리`);
+            txtConv.setText(`👥 ${this.getLangText(`unitConv`)} : ${data.earnManpower} 마리`);
             // 가벼운 사운드 효과를 원하시면 여기에 추가: this.sound.play('tick');
         });
 
         // 0.8초 뒤: 획득한 골드 표시
         this.time.delayedCall(900 , () => {
-            txtGold.setText(`💰 획득한 골드 : +${data.earnGold.toLocaleString()} G`);
+            txtGold.setText(`💰 ${this.getLangText(`earnGold`)} : +${data.earnGold.toLocaleString()} G`);
         });
 
         // 1.2초 뒤: 유지비 표시
         this.time.delayedCall(1200, () => {
-            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
+            txtFee1.setText(`💸 ${this.getLangText(`maintenance`)} (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
         });
         this.time.delayedCall(1500 , () => {
-            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
+            txtFee2.setText(`💸 ${this.getLangText(`maintenance`)} (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
         });
         //게리슨 사망자 표시
         this.time.delayedCall(1800 , () =>{
-            txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
         
         });
 
@@ -690,7 +719,7 @@ class UIScene extends Phaser.Scene {
                 duration:  1200,// 1200ms 동안 숫자가 드르륵 올라감
                 ease: 'Power1',
                 onUpdate: () => {
-                    txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
+                    txtTotal.setText(`👑 ${this.getLangText(`sum`)} : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
                     
                 },
                 onComplete: () => {
@@ -721,10 +750,10 @@ class UIScene extends Phaser.Scene {
                                         }
 
                                         this.registry.set('gold', this.gold);
-            txtFee1.setText(`💸 유지비 (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
-            txtFee2.setText(`💸 유지비 (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
-            txtDeath.setText(`💀 주둔군 손실 : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
-            txtTotal.setText(`👑 총 금액 : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
+            txtFee1.setText(`💸 ${this.getLangText(`maintenance`)} (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
+            txtFee2.setText(`💸 ${this.getLangText(`maintenance`)} (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
+            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+            txtTotal.setText(`👑 ${this.getLangText(`sum`)} : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
 
                                         if( scoreCounter.value >=0){ //this.gold
                                             //다음스테이지
@@ -780,7 +809,7 @@ class UIScene extends Phaser.Scene {
         
 
          // 다음 스테이지 버튼
-        this.nextStageBtn = this.makeButton(200,60,0,280,'Continue');
+        this.nextStageBtn = this.makeButton(200,60,0,280,this.getLangText('continue'));
         this.nextStageBtn.on('pointerdown', () => {
             if(this.gold<0){
                 //음수인 경우 게임진행 불가
@@ -801,7 +830,7 @@ class UIScene extends Phaser.Scene {
             }else{
                  this.resultWindow.setVisible(false);
                 this.upgradeWindow.setVisible(true);
-                this.saveButton.setText('💾저장하기');
+                //this.saveButton.txt.setText('💾저장하기');
                 this.drawHealthBar(this.healthBar, 60, 50 ); // 위치
             }
             
@@ -866,19 +895,13 @@ class UIScene extends Phaser.Scene {
         this.upgradeWindow.add([nextBg, this.nextWaveBtn]);
 
         //저장버튼
-        const saveBg = this.add.rectangle(-width/2 +150 , 280, 200,  60,  0x444444).setStrokeStyle(2, 0xffffff)
-                .setInteractive({ useHandCursor: true }).setOrigin(0.5);
-        this.saveButton = this.add.text(-width/2 +150 , 280, '💾저장하기', {
-            fontSize: '28px',
-            fill: '#ffffff',
-            padding: { x: 30, y: 20 }
-        })
-        .setOrigin(0.5);
-        saveBg.on('pointerdown', (pointer, localX, localY, event) => {
+        this.saveButton = this.makeButton(200,60, -width/2 +150 , 180, `💾${this.getLangText('save')}`);
+        this.saveButton.box.setAlpha(0);
+        this.saveButton.on('pointerdown', (pointer, localX, localY, event) => {
             this.saveLoadScene.saveWindowVisible(true,'savedata');
             return;
         });
-        this.upgradeWindow.add([saveBg, this.saveButton]);
+        this.upgradeWindow.add([this.saveButton]);
 
         // 2. 카테고리 이름들만 배열로 추출
         // 결과: ['지휘소', '성당', '궁수양성소', '마술사의 샘']
@@ -886,10 +909,10 @@ class UIScene extends Phaser.Scene {
         const allUpgrades = this.registry.get('playerUpgrades');
         const categories = Object.keys(allUpgrades);
         const categoryNames = {
-            'stronghold':'🏰건축소',
-            'cathedral' :'⛪대성당',
-            'barracks' : '🏹훈련소',
-            'magichall' : '🪄마녀의 샘'
+            'stronghold':`🏰${this.getLangText('stronghold')}`,
+            'cathedral' :`⛪${this.getLangText('cathedral')}`,
+            'barracks' : `🏹${this.getLangText('barracks')}`,
+            'magichall' : `🪄${this.getLangText('magichall')}`
         }
 
         // 3. 추출된 이름을 바탕으로 버튼 생성
@@ -899,11 +922,11 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(name); // 첫 번째 카테고리 자동 선택
             }
 
-            const xPos = -200 + (index * 160); // 150px 간격으로 배치
+            const xPos = -200 + (index * 180); // 150px 간격으로 배치
             const yPos = -190;
 
             // 1. 배경 사각형 (모두 동일한 120x40 사이즈)
-            const bg = this.add.rectangle(xPos, yPos, 150, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
+            const bg = this.add.rectangle(xPos, yPos, 170, 50, this.selectedCategory === name ? 0x5555ff : 0x444444).setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true });
                 this.buttons.push(bg); // 버튼을 배열에 저장
             // 2. 버튼 텍스트 (사각형 중앙에 배치)
@@ -1468,5 +1491,14 @@ class UIScene extends Phaser.Scene {
         window.location.reload();
     }
 
+    getLangText(key) {
+        const dict = this.registry.get('langDict');
+        const currentLang = this.registry.get('currentLang'); // 'ko' 또는 'en'
+        
+        if (dict[key] && dict[key][currentLang]) {
+            return dict[key][currentLang];
+        }
+        return key; // 번역이 없으면 키 값을 그대로 노출 (디버깅용)
+    }
 
 }

@@ -16,6 +16,10 @@ class PreloadScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 2. 모든 리소스 로드
+
+        // 1. TSV(또는 CSV) 파일을 일반 텍스트 파일로 로드합니다.
+        this.load.text('langTable', 'assets/data/localization.tsv');
+        
         this.load.image('radarGlow', 'assets/radarGlow.png');
         
         this.load.image('menu_bg', 'assets/bg1.png');
@@ -41,6 +45,8 @@ class PreloadScene extends Phaser.Scene {
         
         this.load.spritesheet('mobsprite3', 'assets/mobsprite3.png', { frameWidth: 128, frameHeight: 128});
         this.load.spritesheet('mobsprite3_fire', 'assets/mobsprite3_fire.png', { frameWidth: 128, frameHeight: 128});
+
+         this.load.spritesheet('mobsprite4', 'assets/mobsprite4.png', { frameWidth: 128, frameHeight: 128});
 
         this.load.spritesheet('mobsprite10', 'assets/mobsprite10.png', { frameWidth: 128, frameHeight: 128});
         //this.load.image('wall', 'assets/wall.png');
@@ -83,6 +89,27 @@ class PreloadScene extends Phaser.Scene {
         });
     }
     create(){
+
+         const saveOption = localStorage.getItem('projectCD_saveOption');
+         let lang = 'ko';
+        if(saveOption){
+             const data = JSON.parse(saveOption);
+             if(data.currentLang==null){
+                lang = 'ko';
+             }else{
+                lang = data.currentLang;
+             }
+
+        }
+        // 2. 로드된 텍스트 데이터를 가져옵니다.
+        const tsvData = this.cache.text.get('langTable');
+        
+        // 3. 데이터를 전역에서 쓸 수 있도록 파싱하여 저장합니다.
+        // 현재 설정된 언어 코드를 함께 지정합니다 (예: 'ko' 또는 'en')
+        this.registry.set('currentLang', lang ); 
+        this.registry.set('langDict', this.parseTSV(tsvData));
+
+
         this.anims.create({
             key: 'castle0',
             frames: this.anims.generateFrameNumbers('castleSprite', { start: 0, end: 1 }), // 스프라이트 시트의 0번부터 1번 프레임까지 사용
@@ -157,6 +184,13 @@ class PreloadScene extends Phaser.Scene {
             frameRate: 20, 
             repeat: 0
         });
+
+        this.anims.create({
+            key: 'mob4_walk',
+            frames: this.anims.generateFrameNumbers('mobsprite4', { start: 0, end: 1 }),
+            frameRate: 4, 
+            repeat: -1
+        });
          this.anims.create({
             key: 'mob10_walk',
             frames: this.anims.generateFrameNumbers('mobsprite10', { start: 0, end: 1 }),
@@ -168,4 +202,29 @@ class PreloadScene extends Phaser.Scene {
         //this.scene.start('GameScene');
     }
     
+
+    // 🛠️ TSV 텍스트를 JavaScript 객체(딕셔너리)로 변환하는 핵심 파서
+    parseTSV(text) {
+        const lines = text.split('\n');
+        const headers = lines[0].replace('\r', '').split('\t'); // 첫 줄 (key, ko, en...)
+        
+        const dict = {};
+
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue; // 빈 줄 패스
+
+            const currentLine = lines[i].replace('\r', '').split('\t');
+            const key = currentLine[0]; // 식별 키 (예: game_title)
+
+            dict[key] = {};
+            for (let j = 1; j < headers.length; j++) {
+                const langCode = headers[j];     // 언어 코드 (ko, en)
+                const translation = currentLine[j]; // 번역된 문장
+                dict[key][langCode] = translation.replace('//','\n');
+            }
+        }
+        
+        // 결과 구조: { game_title: { ko: "디펜스 성 지키기", en: "Defense Castle" }, ... }
+        return dict;
+    }
 }
