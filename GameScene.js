@@ -29,10 +29,10 @@ class GameScene extends Phaser.Scene {
         this.score=0;
         this.gold = 0;
         this.skills = [
-            { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 }, 
-            { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 },
-            { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 },
-            { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 60 }
+            { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 , stack:1, maxStack:1}, 
+            { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 , stack:3, maxStack:3},
+            { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 , stack:1, maxStack:1},
+            { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 100 , stack:2, maxStack:2}
         ];
         this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
             mp:0, maxMp:0,
@@ -306,6 +306,11 @@ class GameScene extends Phaser.Scene {
         this.spawnTimers.forEach((element) => {
             element.remove();
         });
+         for(let i =0 ; i< this.skills.length ; i++){
+            const sk = this.skills[i];
+            sk.cooltime =0;
+            sk.stack = sk.maxStack;
+         }
         this.spawnTimers = [];
         //통계 데이터 초기화
         this.data ={
@@ -1115,7 +1120,7 @@ class GameScene extends Phaser.Scene {
                 mobArray.splice(i,1);
             }
         }
-        console.log(mobArray);
+        //console.log(mobArray);
         //console.log(`드래그되지 않은 몹 수 :${mobArray.length}`); isDragging ??? 
         if(mobArray.length<=0 && targeting ==null){
             return;
@@ -1254,7 +1259,7 @@ class GameScene extends Phaser.Scene {
             
             // 스킬 데이터 찾기
             const skill = uiScene.skills.find(s => s.tag === activeSkill);
-            if(skill.cooltime>0) {uiScene.shakeMpBar(); return ;}//쿨이 돌고 있다면 무시
+            if(skill.cooltime>0  && skill.stack<=0) {uiScene.shakeMpBar(); return ;}//쿨이 돌고 있다면 무시
 
             // 마나(MP) 시스템이 있다면 체크 (예시)
             if (this.stat.mp < skill.mp) { uiScene.shakeMpBar(); console.log("MP가 부족합니다!"); return; }
@@ -1291,7 +1296,11 @@ class GameScene extends Phaser.Scene {
                 this.castMeteor( mob.x );
             }
             // 3. ⏱️ 스킬을 성공적으로 썼으므로 쿨타임을 적용합니다.
-            skill.cooltime = skill.maxCooltime;
+            if(skill.cooltime<=0){
+                skill.cooltime = skill.maxCooltime;
+            }
+            
+            skill.stack--;
 
             // 4. 📴 스킬을 사용했으니 장전 상태(토글)를 해제하여 평소 상태로 돌립니다.
             uiScene.deactivateAllSkills();
@@ -1399,6 +1408,8 @@ class GameScene extends Phaser.Scene {
                     data.skills[i].maxCooltime = this.skills[i].maxCooltime;
                     data.skills[i].mp = this.skills[i].mp;
                     data.skills[i].name = this.skills[i].name;
+                    data.skills[i].stack = this.skills[i].stack;
+                    data.skills[i].maxStack = this.skills[i].maxStack;
                     //data.skills[i].unlock = this.skills[i].unlock;//테스트
                 }
             }

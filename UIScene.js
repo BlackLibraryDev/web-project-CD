@@ -1101,6 +1101,7 @@ class UIScene extends Phaser.Scene {
                 if (comp.text) comp.text.setVisible(isVisible);
 
                 if (comp.keytext) comp.keytext.setVisible(isVisible);
+                if (comp.stacktext) comp.stacktext.setVisible(isVisible);
 
                 // 💡 [핵심] 삐져나감을 막아주던 사각형 마스크 틀 자체도 함께 숨겨야 잔상이 안 남습니다!
                 if (comp.maskGraphics) comp.maskGraphics.setVisible(isVisible);
@@ -1123,7 +1124,8 @@ class UIScene extends Phaser.Scene {
                 if (comp.coolShadow) comp.coolShadow.destroy(); // 쿨타임 그림자 제거
                 if (comp.maskGraphics) comp.maskGraphics.destroy(); // 사각형 마스크 제거
                 if (comp.text) comp.text.destroy();             // 텍스트 객체 제거
-                if (comp.keytext) comp.keytext.destroy();             // 텍스트 객체 제거
+                if (comp.keytext) comp.keytext.destroy();   
+                if (comp.stacktext) comp.stackText.destroy();             // 텍스트 객체 제거
             }
         });
 
@@ -1235,6 +1237,13 @@ class UIScene extends Phaser.Scene {
             strokeThickness: 3,
             align: 'center'}).setOrigin(0.5);
 
+            const stackText = this.add.text(x, y+size/2-10, `★☆`, {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'center'}).setOrigin(0.5);
+            
             // 6. 모든 데이터를 바구니에 저장
             this.skillUIComponents[skill.tag] = {
                 baseBox: baseBox,
@@ -1242,6 +1251,7 @@ class UIScene extends Phaser.Scene {
                 maskGraphics: maskGraphics,
                 text: labelText,
                 keytext: keyText,
+                stacktext: stackText,
                 skillData: skill,
                 size: size,
                 startX: x,
@@ -1395,7 +1405,7 @@ class UIScene extends Phaser.Scene {
                   this.holdSkillBt.x = comp.startX;
                 this.holdSkillBt.y = comp.startY; 
             }
-
+            comp.stacktext.setText(`${skill.stack}/${skill.maxStack}`)
             // 1️⃣ [쿨타임 상태]
             if (skill.cooltime > 0) {
                 const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.05 ) : 1 ; //witch의 스킬인 경우
@@ -1433,42 +1443,50 @@ class UIScene extends Phaser.Scene {
             } 
             // 2️⃣ [대기 상태] 쿨타임이 아닐 때
             else {
-                // if (this.activeSkillTag === skill.tag) return;
-
-                // ❌ [마나 부족] 
-                if (this.stat.mp < skill.mp) {
-                    // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
+                if(skill.stack<skill.maxStack){
+                    skill.stack++;
+                    if(skill.stack<skill.maxStack && skill.cooltime<=0){
+                        skill.cooltime = skill.maxCooltime;
+                    }
                     
-                    if (comp.uiState === 'low-mp') return;
-                    comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
-                    comp.uiState = 'low-mp'; // 상태 확정
-                    comp.text.setText(`${skill.name}\n${skill.mp}MP`);
-                    
-                    comp.baseBox.clear();
-                    comp.baseBox.fillStyle(0x111111, 1); // 어두운 흑색 바탕
-                    comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                    comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
-                    comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                }else{
+                    // if (this.activeSkillTag === skill.tag) return;
 
-                    comp.text.setFill('#ff4d4d');
-                } 
-                // ⭕ [사용 가능] 마나가 충분할 때
-                else {
-                    // 💡 이미 원래 상태('normal')라면 연산을 생략하여 최초 로딩 시 흰색으로 튀는 버그를 차단합니다.
-                    if (comp.uiState === 'normal') return;
-                    
-                    comp.uiState = 'normal'; // 상태 복구
+                    // ❌ [마나 부족] 
+                    if (this.stat.mp < skill.mp) {
+                        // 💡 이미 'low-mp' 상태라면 굳이 매 프레임 다시 그리지 않고 통과합니다.
+                        
+                        if (comp.uiState === 'low-mp') return;
+                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
+                        comp.uiState = 'low-mp'; // 상태 확정
+                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                        
+                        comp.baseBox.clear();
+                        comp.baseBox.fillStyle(0x111111, 1); // 어두운 흑색 바탕
+                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                        comp.baseBox.lineStyle(2, 0x555555, 1); // 어두운 회색 테두리
+                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
 
-                    comp.text.setText(`${skill.name}\n${skill.mp}MP`);
-                    comp.text.setFill('#aaaaaa'); // 명확하게 원래 회색 지정
+                        comp.text.setFill('#ff4d4d');
+                    } 
+                    // ⭕ [사용 가능] 마나가 충분할 때
+                    else {
+                        // 💡 이미 원래 상태('normal')라면 연산을 생략하여 최초 로딩 시 흰색으로 튀는 버그를 차단합니다.
+                        if (comp.uiState === 'normal') return;
+                        
+                        comp.uiState = 'normal'; // 상태 복구
 
-                    // 🎨 대기 상태의 원래 스킬 상자 (0x222222) 새로 그리기
-                    comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
-                    comp.baseBox.clear();
-                    comp.baseBox.fillStyle(0x222222, 1); 
-                    comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
-                    comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
-                    comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                        comp.text.setText(`${skill.name}\n${skill.mp}MP`);
+                        comp.text.setFill('#aaaaaa'); // 명확하게 원래 회색 지정
+
+                        // 🎨 대기 상태의 원래 스킬 상자 (0x222222) 새로 그리기
+                        comp.coolShadow.clear(); // 남아있을지 모를 쿨타임 잔상 완벽 소거
+                        comp.baseBox.clear();
+                        comp.baseBox.fillStyle(0x222222, 1); 
+                        comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                        comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
+                        comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                    }
                 }
             }
         });

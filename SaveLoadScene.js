@@ -10,7 +10,7 @@ class SaveLoadScene extends Phaser.Scene {
         
         const { width, height } = this.cameras.main;
         const backupData = localStorage.getItem( 'projectCD_data');
-        console.log(backupData);
+        //console.log(backupData);
         //localStorage.removeItem('projectCD_data3');
         if(backupData){
             localStorage.setItem('projectCD_data1', backupData);
@@ -913,7 +913,8 @@ class SaveLoadScene extends Phaser.Scene {
     }
     loadOption(){
         const saveOption = localStorage.getItem('projectCD_saveOption');
-        if(saveOption){
+        console.log(saveOption==`null`);
+        if(saveOption !=`null`){
             const data = JSON.parse(saveOption);
             //저장된 환경설정 변수가 있다면?
             if(data.loadGameData ==null) data.loadGameData ='projectCD_data1';
@@ -929,6 +930,16 @@ class SaveLoadScene extends Phaser.Scene {
             this.gameOption = data;
             this.registry.set('gameOption', this.gameOption);
             //console.log(`환경설정을 불러왔습니다`,data);
+        }else{
+            this.gameOption = {
+                loadGameData:'projectCD_data1',
+                autoSkillHold: true,
+                bgmVolume:0,
+                soundVolume:0,
+                arrowEfCount:10,
+                arrowRemainTimer:10000,
+                currentLang:'ko'
+            }
         }
     }
 
@@ -1081,12 +1092,12 @@ class SaveLoadScene extends Phaser.Scene {
     playSound(name, randomIndex =-1, hasDetune=true){
         const randomDetune = hasDetune==true? Phaser.Math.Between(-150, 150) : 0 ;
         const num = randomIndex<0? '' : Phaser.Math.Between(0, randomIndex-1);
-        this.sound.play(`${name}${num}`, {volume:this.gameOption.soundVolume, detune: randomDetune});
+        this.sound.play(`${name}${num}`, {volume:this.gameOption.soundVolume ||0 , detune: randomDetune});
     }
     playBGM2(name, isloop=true){
         const bgmConfig = {
             mute: false,         // 음소거 여부
-            volume: this.gameOption.bgmVolume,       // 볼륨 (0.0 ~ 1.0)
+            volume: this.gameOption.bgmVolume || 0,       // 볼륨 (0.0 ~ 1.0)
             rate: 1,            // 재생 속도 (1이 배속)
             detune: 0,          // 음정 조절
             seek: 0,            // 시작 재생 위치 (초 단위)
@@ -1101,7 +1112,7 @@ class SaveLoadScene extends Phaser.Scene {
     playBGM(name, isloop=true){
         const bgmConfig = {
             mute: false,         // 음소거 여부
-            volume: this.gameOption.bgmVolume,       // 볼륨 (0.0 ~ 1.0)
+            volume: this.gameOption.bgmVolume || 0,       // 볼륨 (0.0 ~ 1.0)
             rate: 1,            // 재생 속도 (1이 배속)
             detune: 0,          // 음정 조절
             seek: 0,            // 시작 재생 위치 (초 단위)

@@ -92,12 +92,13 @@ class PreloadScene extends Phaser.Scene {
 
          const saveOption = localStorage.getItem('projectCD_saveOption');
          let lang = 'ko';
-        if(saveOption){
+        if(saveOption !=`null`){
              const data = JSON.parse(saveOption);
-             if(data.currentLang==null){
-                lang = 'ko';
-             }else{
+             
+             if(data !=null && data.currentLang!=null){
                 lang = data.currentLang;
+             }else{
+                lang = 'ko';
              }
 
         }
