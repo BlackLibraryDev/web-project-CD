@@ -350,13 +350,13 @@ class UIScene extends Phaser.Scene {
         graphics.fillRect(width/2 -100 , 65, 200 * timeRatio, 10);
         this.waveText.setText(`Wave ${this.wave.value || 1}`);
     }
-    drawManaBar(graphics, x = 0, y = 0){
+    drawManaBar(graphics, x = 0, y = -140){
         let maxWidth =200;
         let mptxt =``;
         let mptxtend =``;
         if(this.upgradeWindow.visible){
             x= -450;
-            y= -300;
+            y= -420;
             maxWidth = 100;
             mptxt = 'MP: ';
             mptxtend='  ';
@@ -370,16 +370,16 @@ class UIScene extends Phaser.Scene {
         
         graphics.clear();
         graphics.fillStyle(0x222222);
-        graphics.fillRect( width/2 -barWidth/2 +x ,height-120 +y, barWidth, 16);
+        graphics.fillRect( width/2 -barWidth/2 +x ,height+y, barWidth, 16);
 
         graphics.fillStyle( 0x3498db );
         const timeRatio = Phaser.Math.Clamp(this.stat.mp/ this.stat.maxMp, 0, 1);
-        graphics.fillRect(width/2 -barWidth/2+x ,height-120+y , barWidth * timeRatio, 16);
+        graphics.fillRect(width/2 -barWidth/2+x ,height+y , barWidth * timeRatio, 16);
 
         //this.manaTxt = this.add.text(config.width /2, config.height-140,``,{
         this.manaTxt.setText(`${mptxt}${ Math.floor(this.stat.mp)}/${this.stat.maxMp}${mptxtend}`);
         this.manaTxt.x = config.width /2+x;
-        this.manaTxt.y = config.height-140+y;
+        this.manaTxt.y = config.height+y-20;
        
 
     }
@@ -1086,7 +1086,15 @@ class UIScene extends Phaser.Scene {
         this.holdSkillTxt.setVisible(isVisible);
         this.holdSkillBt.setVisible(isVisible);
         this.activeSkillBox.setVisible(isVisible);
-
+        Object.keys(this.garrisonUI).forEach(tag => {
+            const comp = this.garrisonUI[tag];
+            if (comp) {
+                if (comp.baseBox) comp.baseBox.setVisible(isVisible);
+                if (comp.keytext) comp.keytext.setVisible(isVisible);
+                if (comp.stacktext) comp.stacktext.setVisible(isVisible);
+                if( comp.icon) comp.icon.setVisible(isVisible);
+            }
+        });
         Object.keys(this.skillUIComponents).forEach(tag => {
             const comp = this.skillUIComponents[tag];
             
@@ -1114,6 +1122,18 @@ class UIScene extends Phaser.Scene {
         }
     }
     clearSkillUI() {
+        if(!this.garrisonUI) return;
+        Object.keys(this.garrisonUI).forEach(tag => {
+            const comp = this.garrisonUI[tag];
+            if (comp) {
+                if (comp.baseBox) comp.baseBox.destroy();       // 바탕 상자 제거 (이벤트도 자동 해제됨)
+                if (comp.keytext) comp.keytext.destroy();             // 텍스트 객체 제거
+                if (comp.stacktext) comp.stacktext.destroy();             // 텍스트 객체 제거
+                if( comp.icon) comp.icon.destroy();
+            }
+        });
+        this.garrisonUI = {};
+        
         if (!this.skillUIComponents) return;
 
         // 보관함에 들어있는 모든 스킬의 그래픽스와 텍스트를 순회하며 완전히 파괴합니다.
@@ -1125,7 +1145,8 @@ class UIScene extends Phaser.Scene {
                 if (comp.maskGraphics) comp.maskGraphics.destroy(); // 사각형 마스크 제거
                 if (comp.text) comp.text.destroy();             // 텍스트 객체 제거
                 if (comp.keytext) comp.keytext.destroy();   
-                if (comp.stacktext) comp.stackText.destroy();             // 텍스트 객체 제거
+                if (comp.stacktext) comp.stacktext.destroy();             // 텍스트 객체 제거
+                if( comp.icon) comp.icon.destroy();
             }
         });
 
@@ -1147,12 +1168,71 @@ class UIScene extends Phaser.Scene {
         const { width, height } = this.cameras.main;
         const size = 80; // 사각형 상자 크기 (60x60)
         const size2 = 96;
+        const spacing = 100; // 아이콘 간격
         const fontStyle = {
             fontFamily: 'Impact, Arial Black, sans-serif',
             fontSize: '28px',
             fill: '#aaaaaa',
             align: 'center'
         };
+        
+        this.garrisonUI ={};
+        const stat = this.registry.get('stat');
+        this.garrisons = [{tag: 'archer', stat: stat.archer, iconIndex: 0}, {tag: 'witch', stat: stat.witch, iconIndex: 1}];
+        this.garrisons.forEach((garrison, index)=>{
+
+            const x = 70 + (index * spacing);
+            const y = height -60;
+
+            const baseBox = this.add.graphics();
+            baseBox.fillStyle(0xffffff, 1);
+            baseBox.fillRect(x - size / 2, y - size / 2, size, size);
+            baseBox.lineStyle(2, 0xaaaaaa, 1);
+            baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
+
+            //const imageKey = garrison.iconIndex||0;//=== 'archer' ? 'archer' : 'witchIcon'||0;
+            const icon = this.add.sprite(x, y, 'icon',garrison.iconIndex).setDisplaySize(64, 64);
+
+            const keyText = this.add.text(x, y-size/2, garrison.tag , {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'center'}).setOrigin(0.5);
+
+            
+            const stackText = this.add.text(x, y+size/2-10, garrison.stat, {fontFamily: 'Impact, Arial Black, sans-serif',
+            fontSize: '24px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            align: 'center'}).setOrigin(0.5);
+            // 4. 🖱️ 마우스 터치 히트 영역 지정 (바탕 상자 기준)
+            const hitArea = new Phaser.Geom.Rectangle(x - size / 2, y - size / 2, size, size);
+            baseBox.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+             baseBox.on('pointerdown', () => {
+                    // this.activeSkillTagHold=false; //액티브스킬 홀드를 초기화시켜줌
+                    this.deactivateAllSkills();
+                    this.stat = this.registry.get('stat');
+                    if(this.stat.manPower>0){
+                        this.stat.manPower--;
+                        this.stat[garrison.tag]++;
+                        this.registry.set('stat', this.stat);
+                    }
+                    stackText.setText(this.stat[garrison.tag]);
+             });
+              // 6. 모든 데이터를 바구니에 저장
+            this.garrisonUI[garrison.tag] = {
+                baseBox: baseBox,
+                keytext: keyText,
+                stacktext: stackText,
+                icon: icon,
+                size: size,
+                startX: x,
+                startY: y
+            };
+        })
+
 
         // 1. 데이터 베이스 참조 (스킬 리스트)
         this.skills = this.registry.get('skills');
@@ -1190,9 +1270,9 @@ class UIScene extends Phaser.Scene {
         this.activeSkillTag = null; 
         const activatedSkills = this.skills.filter(item => item.unlock)  //배열 아이템 중 특정 변수값이 true 인 경우 getMatching('unlock',true);
         //console.log(activatedSkills);
-        const spacing = 100; // 아이콘 간격
+        
         const startX = width/2 - (activatedSkills.length/2)*spacing + spacing/2; // 스킬 바 시작 X 위치
-        const startY = height-50;
+        const startY = height-60;
 
         this.skillUIComponents = {};
 
@@ -1209,6 +1289,8 @@ class UIScene extends Phaser.Scene {
             baseBox.fillRect(x - size / 2, y - size / 2, size, size);
             baseBox.lineStyle(2, 0xaaaaaa, 1);
             baseBox.strokeRect(x - size / 2, y - size / 2, size, size);
+
+            
             
 
             // 3. 🍕 [핵심] 시계방향 피자 조각 모양을 연출할 마스크 그래픽스 생성
@@ -1221,7 +1303,8 @@ class UIScene extends Phaser.Scene {
             const mask = maskGraphics.createGeometryMask();
             coolShadow.setMask(mask);
             
-            
+            //const icon = this.add.sprite(x, y, 'icon', index+4 ).setDisplaySize(size, size);
+            const icon = null;
 
             // 4. 🖱️ 마우스 터치 히트 영역 지정 (바탕 상자 기준)
             const hitArea = new Phaser.Geom.Rectangle(x - size / 2, y - size / 2, size, size);
@@ -1248,6 +1331,7 @@ class UIScene extends Phaser.Scene {
             this.skillUIComponents[skill.tag] = {
                 baseBox: baseBox,
                 coolShadow: coolShadow,
+                icon: icon,
                 maskGraphics: maskGraphics,
                 text: labelText,
                 keytext: keyText,
@@ -1276,7 +1360,7 @@ class UIScene extends Phaser.Scene {
                     
                     //this.deactivateAllSkills();
                 } else {
-                    if (skill.cooltime > 0) return;
+                    //if (skill.cooltime > 0) return;
                     //console.log(33);
                     this.deactivateAllSkills();
                     this.activeSkillTagHold= false// this.registry.get('optionData').autoSkillHold;
@@ -1358,12 +1442,15 @@ class UIScene extends Phaser.Scene {
             this.manaBar.setVisible(false);
             this.manaTxt.setVisible(false);
         }
+
+
+
         if(this.activeSkillTag!=null){
             this.activeSkillBox.setVisible(true);
         }else{
             this.activeSkillBox.setVisible(false);
         }
-       
+
         if (!this.skillUIComponents) return;
         
         const firstKey = Object.keys(this.skillUIComponents)[0];
@@ -1486,6 +1573,7 @@ class UIScene extends Phaser.Scene {
                         comp.baseBox.fillRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
                         comp.baseBox.lineStyle(2, 0xaaaaaa, 1); 
                         comp.baseBox.strokeRect(comp.startX - comp.size / 2, comp.startY - comp.size / 2, comp.size, comp.size);
+                  
                     }
                 }
             }

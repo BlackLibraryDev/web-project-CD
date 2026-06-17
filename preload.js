@@ -28,12 +28,14 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('background1_dark', 'assets/bg1_dark.png');
 
         //this.load.image('castle', 'assets/castle1.png');
+        this.load.spritesheet('icon', 'assets/icon.png', { frameWidth: 128, frameHeight: 128 });
         this.load.spritesheet('castleSprite','assets/castleSprite.png', { frameWidth: 128, frameHeight: 128 });
 
         this.load.spritesheet('flag','assets/flag.png', { frameWidth: 128, frameHeight: 512});
 
         this.load.spritesheet('arrow', 'assets/arrow.png', { frameWidth: 48, frameHeight: 12});
         this.load.spritesheet('archer', 'assets/archer.png', { frameWidth: 128, frameHeight: 128 });
+        this.load.spritesheet('witch', 'assets/archer.png', { frameWidth: 128, frameHeight: 128 }); //마녀 이미지 추가
 
         this.load.spritesheet('cathedral', 'assets/cathedral.png', { frameWidth: 128, frameHeight: 128 });
 

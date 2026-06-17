@@ -913,7 +913,6 @@ class SaveLoadScene extends Phaser.Scene {
     }
     loadOption(){
         const saveOption = localStorage.getItem('projectCD_saveOption');
-        console.log(saveOption==`null`);
         if(saveOption !=`null`){
             const data = JSON.parse(saveOption);
             //저장된 환경설정 변수가 있다면?

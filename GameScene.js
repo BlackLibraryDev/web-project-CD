@@ -32,7 +32,7 @@ class GameScene extends Phaser.Scene {
             { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 , stack:1, maxStack:1}, 
             { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 , stack:3, maxStack:3},
             { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 , stack:1, maxStack:1},
-            { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 100 , stack:2, maxStack:2}
+            { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 60 , stack:2, maxStack:2}
         ];
         this.stat ={hp:100, maxHp:100, armor:0 , unitPer:0,
             mp:0, maxMp:0,
@@ -343,8 +343,13 @@ class GameScene extends Phaser.Scene {
             this.archeryTimer = this.time.addEvent({
                 delay:  this.stat.archerCool ,
                 callback: ()=>{
-
-                    this.archerFire(null);
+                    if(this.stat.archer>0){
+                         this.archerText.setVisible(true);
+                        this.archerText.setText(`🏹 x${this.stat.archer}`);
+                        
+                        this.archer.setVisible(true);
+                        this.archerFire(null);
+                    }
                 },
                 callbackScope: this,
                 loop:true
@@ -389,7 +394,13 @@ class GameScene extends Phaser.Scene {
             // 일반 클릭과 구별하기 위해 브라우저 기본 간섭 방지
             if (pointer.event) pointer.event.preventDefault();
             // 🎯 스킬 및 공격 판단 함수 호출 (아래 2단계에서 구현)
-            this.handleMobClick(mob);
+            const uiScene = this.scene.get('UIScene');
+            const activeSkill = uiScene.activeSkillTag; 
+            if(activeSkill=='meteo'){
+            }else{
+                this.handleMobClick(mob);
+            }
+            
         });
         
         // 1. 바닥과의 마찰력을 0으로 설정
@@ -502,6 +513,9 @@ class GameScene extends Phaser.Scene {
         
         if(this.mobs.getChildren().length <= 0 && !this.isWaveInProgress){
             this.isPaused=true;
+            this.data.archer = this.stat.archer;
+            this.data.witch = this.stat.witch;
+            
             this.events.emit('waveCleared', this.data); // UIScene에 웨이브 클리어 신호 보냄
             this.setBgImage('background1',true);
 
@@ -900,7 +914,13 @@ class GameScene extends Phaser.Scene {
         });
     };
     mobDamageEffect(mob, damage){
-        const damageText = this.add.text(mob.x +Phaser.Math.Between(-20, 20), mob.y +Phaser.Math.Between(-20, 20), `-${Math.ceil(damage*100)}%`, { font: '32px Arial', fill: '#ff0000' }).setOrigin(0.5);
+        const damageText = this.add.text(mob.x +Phaser.Math.Between(-20, 20), mob.y +Phaser.Math.Between(-20, 20), `-${Math.ceil(damage*100)}%`, 
+        { font: '32px Arial',
+            fill: '#ff0000' ,
+            stroke: '#000000',
+            strokeThickness: 3,
+        }
+    ).setOrigin(0.5);
         damageText.setDepth(10);
         this.tweens.add({
             targets: damageText,
@@ -1193,7 +1213,7 @@ class GameScene extends Phaser.Scene {
             targets: meteor,
             x: targetX,
             y: targetY,
-            duration: 800, // 0.8초 동안 낙하
+            duration: 900, // 0.8초 동안 낙하
             ease: 'Cubic.easeIn', // 갈수록 빨라지는 중력 효과 연출
             onComplete: () => {
                 // 바닥에 닿는 순간!
@@ -1219,7 +1239,7 @@ class GameScene extends Phaser.Scene {
 
         // 6️⃣ 💥 [핵심] Mobs 오브젝트들과 거리 검사 (광역 데미지)
         const damageRadius = 160; // 폭발 반경 (픽셀 단위)
-        //const meteorDamage = 50;  // 메테오 기본 데미지
+        const meteorDamage = 4;  // 메테오 기본 데미지
 
         // 그룹 내의 모든 몹들을 순회하며 거리 측정
         // 'this.mobs'는 몹들이 담긴 Phaser.GameObjects.Group 혹은 배열이라고 가정합니다.
@@ -1231,14 +1251,21 @@ class GameScene extends Phaser.Scene {
 
             // 지정한 폭발 반경 안에 몹이 들어와 있다면?
             if (distance <= damageRadius) {
-                console.log(`${mob.name || '몬스터'}가 메테오 범위 내에 있음! 거리: ${Math.round(distance)}px`);
                 
                 // [선택 사항] 중심에 가까울수록 더 큰 데미지를 주고 싶다면? (스플래시 데미지 공식)
-                // const proximity = 1 - (distance / damageRadius); // 중심일수록 1, 가장자리일수록 0에 수렴
-                // const finalDamage = Math.round(meteorDamage * proximity);
+                const proximity = 1 - (distance / damageRadius); // 중심일수록 1, 가장자리일수록 0에 수렴
+                 const finalDamage = (meteorDamage * proximity);
                 
                 // 몹에게 데미지 입히기 함수 호출
-                this.fadeOutAndDestroy(this, mob);
+                if (mob.hp <= finalDamage) {
+                    this.fadeOutAndDestroy(this, mob);
+                }else{
+                    mob.hp -= finalDamage;
+                    this.mobDamageEffect(mob, finalDamage);
+                }
+                console.log(`${mob.name || '몬스터'}가 메테오 범위 내에 있음! 대미지: ${finalDamage.toFixed(2)}`);
+                
+                //this.fadeOutAndDestroy(this, mob);
             }
         });
     }
