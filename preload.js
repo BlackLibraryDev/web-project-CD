@@ -4,7 +4,7 @@ class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
-        //아이콘 :  💾저장 🏰건축소',⛪대성당',🏹훈련소',🪄마녀의 샘' 💸 유지비  💀 주둔군 💰 골드 👥 개종
+        //아이콘 :  💾저장 🏰건축소',⛪대성당',🏹훈련소',🪄마녀의 샘' 🪚수리병  💸 유지비  💀 주둔군 💰 골드 👥 개종
         // 1. 간단한 로딩 텍스트 표시
         let width = this.cameras.main.width;
         let height = this.cameras.main.height;
@@ -112,6 +112,7 @@ class PreloadScene extends Phaser.Scene {
         this.registry.set('currentLang', lang ); 
         this.registry.set('langDict', this.parseTSV(tsvData));
 
+        
 
         this.anims.create({
             key: 'castle0',

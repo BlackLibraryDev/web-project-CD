@@ -356,7 +356,7 @@ class UIScene extends Phaser.Scene {
         let mptxtend =``;
         if(this.upgradeWindow.visible){
             x= -450;
-            y= -420;
+            y= -380;
             maxWidth = 100;
             mptxt = 'MP: ';
             mptxtend='  ';
@@ -433,7 +433,7 @@ class UIScene extends Phaser.Scene {
         graphics.fillRect(x, y, 200 * (this.stat.hp / this.stat.maxHp), 20);
         graphics.setDepth(12);
         // 3. 텍스트 업데이트
-        this.hpText.setText(`Castle HP: ${this.stat.hp}/${this.stat.maxHp}`);
+        this.hpText.setText(`Castle HP: ${Math.floor(this.stat.hp)}/${this.stat.maxHp}`);
         this.hpText.x = x; // 체력바와 같은 X 위치로 이동
         this.hpText.setDepth(12);
     }
@@ -441,7 +441,7 @@ class UIScene extends Phaser.Scene {
         // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
         
         const { width, height } = this.cameras.main;
-        const X = -10; // 텍스트 시작 X 좌표
+        const X = 0; // 텍스트 시작 X 좌표
         const Y = 80; // 텍스트 시작 Y 좌표
         const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
 
@@ -474,6 +474,8 @@ class UIScene extends Phaser.Scene {
             this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
             
             this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
+
+            this.statTexts.mason = this.add.text(X+50, Y + 205, '', textStyle).setOrigin(0, 0.5);
            /*
             const dX = width/2;
             const dY = height-160;
@@ -496,17 +498,19 @@ class UIScene extends Phaser.Scene {
 
         this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
         this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
-        this.statTexts.manPower.setText(`👥 ${this.stat.manPower}`).setColor('#9b59b6'); // 파란색 계열
+        this.statTexts.manPower.setText(`👥 ${this.stat.manPower}/${this.stat.house}`).setColor('#9b59b6'); // 파란색 계열
         //this.statTexts.archer.setText(`🏹 ${this.stat.archer}`).setColor('#2ecc71'); // 초록색 계열
         //this.statTexts.witch.setText(`🪄 ${this.stat.witch}`).setColor('#3498db'); // 보라색 계열
         this.statTexts.archer.setText(`🏹 ${this.stat.archer} (-💸${this.stat.archerCost*this.stat.archer})`).setColor('#2ecc71'); // 초록색 계열
         this.statTexts.witch.setText(`🪄 ${this.stat.witch} (-💸${this.stat.witchCost*this.stat.witch})`).setColor('#3498db'); // 보라색 계열
+        this.statTexts.mason.setText(`🔨 ${this.stat.mason} (-💸${this.stat.masonCost*this.stat.mason})`).setColor('#f2691fff'); // 빨간색 계열
         
         this.statTexts.armor.setDepth(22);
         this.statTexts.manPower.setDepth(22);
         this.statTexts.gold.setDepth(22);
         this.statTexts.archer.setDepth(22);
         this.statTexts.witch.setDepth(22);
+        this.statTexts.mason.setDepth(22);
 
         if(this.nextWaveBtn){
             this.nextWaveBtn.setText(`${this.getLangText('nextWave')}${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
@@ -659,19 +663,20 @@ class UIScene extends Phaser.Scene {
 
         // 2. 각 항목의 텍스트 객체를 빈 상태('')로 생성하여 resultWindow에 장착
         // 세로 위치(Y)를 40px 간격으로 나란히 배치합니다.
-        const Ypos =-140;
+        const Ypos =-180;
         const txtMobs = this.add.text(0, Ypos -40,'', labelStyle).setOrigin(0.5);
         const txtConv = this.add.text(0, Ypos + 20, '', labelStyle).setOrigin(0.5);
 
         const txtGold = this.add.text(0, Ypos + 100, '', labelStyle).setOrigin(0.5);
         const txtFee1 = this.add.text(0, Ypos + 160, '', labelStyle).setOrigin(0.5);
         const txtFee2 = this.add.text(0, Ypos + 210, '', labelStyle).setOrigin(0.5);
-        const txtDeath = this.add.text(0, Ypos + 260, '', labelStyle).setOrigin(0.5);
+        const txtFee3 = this.add.text(0, Ypos + 260, '', labelStyle).setOrigin(0.5);
+        const txtDeath = this.add.text(0, Ypos + 310, '', labelStyle).setOrigin(0.5);
 
-        const txtTotal = this.add.text(0, Ypos + 330, '', { ...labelStyle, fontSize: '40px', fill: '#ffcc00' }).setOrigin(0.5);
-        this.resultWindow.add([txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtDeath, txtTotal]);
+        const txtTotal = this.add.text(0, Ypos + 380, '', { ...labelStyle, fontSize: '40px', fill: '#ffcc00' }).setOrigin(0.5);
+        this.resultWindow.add([txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtFee3, txtDeath, txtTotal]);
         // 💡 바구니에 저장해두어 다음 호출 때 지울 수 있게 합니다.
-        this.resultTexts.push(txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtDeath, txtTotal);
+        this.resultTexts.push(txtMobs, txtConv, txtGold, txtFee1, txtFee2, txtFee3, txtDeath, txtTotal);
 
         // 3. ⏱️ 시간차(Delay)를 두고 텍스트를 하나씩 채워나가는 연출
         //console.log('Result Data:', data); // 전달된 데이터 확인 (디버깅용)
@@ -696,26 +701,29 @@ class UIScene extends Phaser.Scene {
         });
 
         // 1.2초 뒤: 유지비 표시
-        this.time.delayedCall(1200, () => {
+        this.time.delayedCall(1400, () => {
             txtFee1.setText(`💸 ${this.getLangText(`maintenance`)} (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
         });
-        this.time.delayedCall(1500 , () => {
+        this.time.delayedCall(1600 , () => {
             txtFee2.setText(`💸 ${this.getLangText(`maintenance`)} (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
         });
+        this.time.delayedCall(1800 , () => {
+            txtFee3.setText(`💸 ${this.getLangText(`maintenance`)} (🪚) : -${(data.masonCost*data.mason).toLocaleString()} G (${data.mason}x${data.masonCost})`).setColor('#ff4d4d');
+        });
         //게리슨 사망자 표시
-        this.time.delayedCall(1800 , () =>{
-            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+        this.time.delayedCall(2200 , () =>{
+            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명, 🪚${(data.masonDeath).toLocaleString()} 명`).setColor('#ff4d4d');
         
         });
 
 
         // 1.8초 뒤: 최종 금액 표시 (중요하므로 살짝 타이밍을 더 끌고 숫자가 올라가는 연출 추가!)
-        this.time.delayedCall(2400 , () => {
+        this.time.delayedCall(2700 , () => {
             // 단순히 글자가 뜨는 게 아니라 숫자가 0부터 총 금액까지 차오르는 연출(Tween)
             const scoreCounter = { value: 0 };
             this.tweens.add({
                 targets: scoreCounter,
-                value: data.earnGold - (data.archerCost*data.archer) - (data.witchCost*data.witch), // 최종 금액
+                value: data.earnGold - (data.archerCost*data.archer) - (data.witchCost*data.witch) - (data.masonCost*data.mason), // 최종 금액
                 duration:  1200,// 1200ms 동안 숫자가 드르륵 올라감
                 ease: 'Power1',
                 onUpdate: () => {
@@ -737,7 +745,6 @@ class UIScene extends Phaser.Scene {
                                             scoreCounter.value += data.archerCost;
                                             this.gold += data.archerCost;
                                             this.stat.archer --;
-
                                             this.garrisonLose ='witch';
 
                                         }else if(this.garrisonLose =='witch'){
@@ -745,14 +752,20 @@ class UIScene extends Phaser.Scene {
                                             scoreCounter.value += data.witchCost;
                                             this.gold += data.witchCost;
                                             this.stat.witch --;
+                                            this.garrisonLose = 'mason';
 
+                                        }else if(this.garrisonLose =='mason'){
+                                            data.masonDeath++;
+                                            scoreCounter.value += data.masonCost;
+                                            this.gold += data.masonCost;
+                                            this.stat.mason --;
                                             this.garrisonLose = 'archer';
                                         }
 
                                         this.registry.set('gold', this.gold);
             txtFee1.setText(`💸 ${this.getLangText(`maintenance`)} (🏹) : -${(data.archerCost*data.archer).toLocaleString()} G (${data.archer}x${data.archerCost})`).setColor('#ff4d4d');
             txtFee2.setText(`💸 ${this.getLangText(`maintenance`)} (🪄) : -${(data.witchCost*data.witch).toLocaleString()} G (${data.witch}x${data.witchCost})`).setColor('#ff4d4d');
-            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명`).setColor('#ff4d4d');
+            txtDeath.setText(`💀 ${this.getLangText(`garrisonLoss`)} : 🏹${(data.archerDeath).toLocaleString()} 명, 🪄${(data.witchDeath).toLocaleString()} 명, 🪚${(data.masonDeath).toLocaleString()} 명`).setColor('#ff4d4d');
             txtTotal.setText(`👑 ${this.getLangText(`sum`)} : ${Math.floor(scoreCounter.value).toLocaleString()} G`);
 
                                         if( scoreCounter.value >=0){ //this.gold
@@ -1178,7 +1191,11 @@ class UIScene extends Phaser.Scene {
         
         this.garrisonUI ={};
         const stat = this.registry.get('stat');
-        this.garrisons = [{tag: 'archer', stat: stat.archer, iconIndex: 0}, {tag: 'witch', stat: stat.witch, iconIndex: 1}];
+        this.garrisons = [
+            {tag: 'archer', stat: stat.archer, iconIndex: 0},
+             {tag: 'witch', stat: stat.witch, iconIndex: 1},
+             {tag: 'mason', stat: stat.mason, iconIndex: 2}
+            ];
         this.garrisons.forEach((garrison, index)=>{
 
             const x = 70 + (index * spacing);
@@ -1219,10 +1236,11 @@ class UIScene extends Phaser.Scene {
                         this.stat[garrison.tag]++;
                         this.registry.set('stat', this.stat);
                     }
-                    stackText.setText(this.stat[garrison.tag]);
+                   // stackText.setText(this.stat[garrison.tag]);
              });
               // 6. 모든 데이터를 바구니에 저장
             this.garrisonUI[garrison.tag] = {
+                tag: garrison.tag,
                 baseBox: baseBox,
                 keytext: keyText,
                 stacktext: stackText,
@@ -1442,8 +1460,18 @@ class UIScene extends Phaser.Scene {
             this.manaBar.setVisible(false);
             this.manaTxt.setVisible(false);
         }
-
-
+        if(this.stat.mason>0){
+            this.stat.hp += delta * this.stat.mason*0.0001;
+            if(this.stat.hp>this.stat.maxHp) this.stat.hp = this.stat.maxHp;
+            this.drawHealthBar(this.healthBar);
+        }
+        //
+        Object.keys(this.garrisonUI).forEach(tag => {
+            const comp = this.garrisonUI[tag];
+            if (comp.stacktext) {
+                comp.stacktext.setText(this.stat[comp.tag]);
+            }
+        });
 
         if(this.activeSkillTag!=null){
             this.activeSkillBox.setVisible(true);
@@ -1497,6 +1525,8 @@ class UIScene extends Phaser.Scene {
             if (skill.cooltime > 0) {
                 const coolSpeed = skill.mp>0? (1 + this.stat.witch * 0.05 ) : 1 ; //witch의 스킬인 경우
                 skill.cooltime -= delta * coolSpeed;
+
+                ///if(skill.stack<skill.maxStack){
                 comp.uiState = 'cooldown'; // 상태 변경
 
                 const remainingSec = (skill.cooltime / (1000 * coolSpeed)).toFixed(1);

@@ -29,7 +29,7 @@ class GameScene extends Phaser.Scene {
         this.score=0;
         this.gold = 0;
         this.skills = [
-            { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 , stack:1, maxStack:1}, 
+            { tag: 'aimShot', name:'집중사격', maxCooltime: 2400, cooltime: 0, unlock:false, mp: 0 , stack:2, maxStack:2}, 
             { tag: 'curse', name:'저주',  maxCooltime: 3000, cooltime: 0, unlock: false, mp: 20 , stack:3, maxStack:3},
             { tag: 'forceConv', name:'현혹술',  maxCooltime: 10000, cooltime: 0, unlock: false, mp: 50 , stack:1, maxStack:1},
             { tag: 'meteo', name:'메테오',  maxCooltime: 5000, cooltime: 0, unlock: false, mp: 60 , stack:2, maxStack:2}
@@ -42,13 +42,18 @@ class GameScene extends Phaser.Scene {
             archerCool:1800,   
             witch:0, 
             witchCost:8,
-            officer:0
+            mason:0,
+            masonCost:6,
+            officer:0,
+            house:10,
 
         };
         this.upgrades = {
             'cathedral': [
                 { tag:'conversion', name: '🙏개종', unlock:false, level: 0, maxLevel: 1, value: 0, cost: 30 , info:'적을 개종(세뇌)시켜 아군 인력으로 충원합니다'},
-                { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'}
+                { tag:'faith', name: '교리 연구', unlock:true, level: 0, maxLevel: 3, value: 1000, cost: 30 , info:'교리를 연구하여 더 빨리 적을 개종시킵니다.'},
+                { tag:'getto', name: '👥게토 확장', unlock:true, level: 1, maxLevel: 5, value: 10, cost: 30, info:'더 많은 개종 인원을 수용합니다'},
+                
             ],
             
             
@@ -68,7 +73,8 @@ class GameScene extends Phaser.Scene {
                 { tag:'wallType', name: '🛡️축성술 연구', unlock:true, level: 0, maxLevel: 5, value: 0, cost: 30, info:'성벽의 재료를 변경하여 더 높은 방어력과 주둔군 방어력이 증가합니다.'},
                 { tag:'maxCastleHp', name: '성채보강',unlock:true, level: 0, maxLevel: 5, value: 0, cost: 20, info:'성벽의 최대 내구도를 증가시킵니다'},
                 { tag:'wallFix', name: '성채수리(+1)', unlock:true, level: -1, maxLevel: 9, value: 1, cost: 1, info:'성벽을 수리합니다. 수리비는 축성술의 영향을 받습니다.'},
-                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'}
+                { tag:'wallFix_10', name: '성채수리(+10)', unlock:true, level: -1, maxLevel: 9, value: 10, cost: 10, info:'성벽을 많이 수리합니다.'},
+                { tag:'mason', name: '🔨석공 고용', unlock:true, level: -1, maxLevel: 5, value: 0, cost: 10, manPower:1, info:`👥인력으로 석공을 고용합니다(💸-${this.stat.masonCost}) 성벽을 자동으로 수리합니다`}
             ]
         };
 
@@ -322,6 +328,9 @@ class GameScene extends Phaser.Scene {
             witch:this.stat.witch, 
             witchCost:this.stat.witchCost,
             witchDeath:0,
+            mason:this.stat.mason,
+            masonCost:this.stat.masonCost,
+            masonDeath:0,
 
             garrisonLoss:''
         };
@@ -420,6 +429,7 @@ class GameScene extends Phaser.Scene {
         mob.isDragging  = false;
         mob.highestY = mob.y;
         mob.fireanime = null;
+        mob.type='man';
         //개인변수
         mob.score = mobData.score || 1;
         mob.speed = mobData.speed || 100 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
@@ -481,6 +491,7 @@ class GameScene extends Phaser.Scene {
             case 10:
                 //Giant
                 mob.name = 'giant';
+                mob.type = 'giant';
                 mob.speed = mobData.speed || 210 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
                 mob.damage = mobData.damage || 3;
                 mob.score = mobData.score || 3;
@@ -515,10 +526,14 @@ class GameScene extends Phaser.Scene {
             this.isPaused=true;
             this.data.archer = this.stat.archer;
             this.data.witch = this.stat.witch;
-            
+            this.data.earnManpower = this.stat.manPower+this.data.earnManpower>= this.stat.house? (this.stat.house-this.stat.manPower>0? this.stat.house-this.stat.manPower : 0) : this.data.earnManpower;
             this.events.emit('waveCleared', this.data); // UIScene에 웨이브 클리어 신호 보냄
             this.setBgImage('background1',true);
 
+            if(this.stat.manPower>this.stat.house){
+                this.stat.manPower = this.stat.house;
+            }
+            this.registry.set('stat', this.stat); // 변경된 스탯을 레지스트리에 저장하여 UIScene 갱신
             //궁수,마법사 정리
             this.archeryTimer?.remove();
             this.archeryTimer = null; // 지운 후에는 항상 null로 초기화해주는 것이 좋습니       
@@ -753,8 +768,14 @@ class GameScene extends Phaser.Scene {
                 this.stat.witch++;
             break;
             
-           
+           case 'mason':
+                this.stat.mason++;
+            break;
             
+            case 'getto':
+                this.stat.house += item.value;
+                
+            break;
             // 다른 태그에 대한 효과도 여기에 추가 가능
         }   
 
@@ -1309,13 +1330,24 @@ class GameScene extends Phaser.Scene {
                 this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
             }
             else if (activeSkill === 'forceConv') {
-                console.log(`👥 ${skill.name} 발동! ${mob.name}가 개종됩니다.`);
-                this.updateScore(mob.score);
-                mob.destroy();
-                this.data.earnManpower ++;
-                this.stat.manPower++;
-                this.saveLoadScene.playSound('holy');
-                this.createBeamEffect(mob.x, config.height-this.groundHeight , 1200 , '0xffcc00', 50);
+                
+                if(mob.type=='man'){
+                    console.log(`👥 ${skill.name} 발동! ${mob.name}가 개종됩니다.`);
+                    this.updateScore(mob.score);
+                    mob.destroy();
+                    this.data.earnManpower ++;
+                    this.stat.manPower++;
+                    this.saveLoadScene.playSound('holy');
+                    this.createBeamEffect(mob.x, config.height-this.groundHeight , 1200 , '0xffcc00', 50);
+                }else{
+                    console.log(`💀 ${skill.name} 발동! ${mob.name}가 즉시 사망합니다`);
+                    this.fadeOutAndDestroy(this, mob);
+                    this.saveLoadScene.playSound('curse',3,false);
+                    this.createBeamEffect(mob.x, config.height- this.groundHeight, 400, 0x9933ff, 40);
+                }
+                
+                
+                
             }
             else if (activeSkill === 'meteo') {
                 console.log(`👥 ${skill.name} 가 떨어집니다`);
@@ -1424,8 +1456,15 @@ class GameScene extends Phaser.Scene {
             if(data.stat.mp ==null) data.stat.mp = 0;
             if(data.stat.maxMp ==null) data.stat.maxMp = 0;
             if(data.stat.officer ==null) data.stat.officer = 0;
+
+            if(data.stat.archer==null) data.stat.archer = 0;
+            if(data.stat.witch==null) data.stat.witch = 0;
+            if(data.stat.mason==null) data.stat.mason = 0;
+            if(data.stat.house==null) data.stat.house = 10;
+
             data.stat.witchCost = this.stat.witchCost;
             data.stat.archerCost = this.stat.archerCost;
+            data.stat.masonCost = this.stat.masonCost;
 
             if(data.skills ==null) data.skills = this.skills;
             for(let i =0 ; i< this.skills.length ; i++){
