@@ -20,8 +20,6 @@ class PreloadScene extends Phaser.Scene {
         // 1. TSV(또는 CSV) 파일을 일반 텍스트 파일로 로드합니다.
         this.load.text('langTable', 'assets/data/localization.tsv');
         
-        this.load.image('radarGlow', 'assets/radarGlow.png');
-        
         this.load.image('menu_bg', 'assets/bg1.png');
 
         this.load.image('background1', 'assets/bg1.png');

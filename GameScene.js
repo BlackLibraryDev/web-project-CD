@@ -81,11 +81,7 @@ class GameScene extends Phaser.Scene {
         
         this.loadGame(data);
     }
-    enit(){
-        // 게임이 완전히 종료될 때 실행되는 함수입니다.
-        // 여기서 리소스 정리나 이벤트 리스너 제거 등을 수행할 수 있습니다.
-        console.log("GameScene이 종료되었습니다. 리소스를 정리합니다.");
-    }
+    
     create() {
         // 씬이 생성된 고유 ID 생성 (랜덤값)
         this.instanceId = Math.floor(Math.random() * 1000);
@@ -229,6 +225,7 @@ class GameScene extends Phaser.Scene {
             
             this.wave.value++;
             this.wave.timer += 2000; //2초 증가
+            if(this.wave.timer > 40000) this.wave.timer = 40000;
             this.registry.set('wave', this.wave);
             this.waveStart(this.wave.timer);
         });
@@ -238,7 +235,22 @@ class GameScene extends Phaser.Scene {
             this.applyUpgrade(category, tag);
         });
 
-        
+        this.events.once('shutdown', () => {
+
+            
+            // 1. 현재 씬에서 재생 중인 모든 오디오 강제 정지
+            this.sound.stopAll();
+
+            // 2. 실행 중인 모든 트윈(애니메이션) 제거
+            this.tweens.killAll();
+
+            // 3. 등록된 모든 시간 타이머 이벤트 제거
+            this.time.removeAllEvents();
+            this.events.off('wavecleared'); 
+            this.events.off('startNextWave');
+            this.events.off('attempt-upgrade');
+            console.log("GameScene이 종료되었습니다. 리소스를 정리합니다.");    
+        });
     }
     drawCastleImage(){
         if (this.castle) {
@@ -388,7 +400,7 @@ class GameScene extends Phaser.Scene {
         //const mob = this.mobs.create(  config.width , config.height -this.groundHeight*2, 'mob1');
        if(!mobData.mobNumber) mobData.mobNumber=1;
 
-        const mob = this.mobs.create( config.width , config.height - this.groundHeight*2, `mobsprite${mobData.mobNumber}`);
+        const mob = this.mobs.create( config.width , config.height - this.groundHeight - 100, `mobsprite${mobData.mobNumber}`);
         mob.anims.play(`mob${mobData.mobNumber}_walk`);
 
         if(mobData.isDragable !=null && mobData.isDragable == false){
@@ -405,8 +417,12 @@ class GameScene extends Phaser.Scene {
             // 🎯 스킬 및 공격 판단 함수 호출 (아래 2단계에서 구현)
             const uiScene = this.scene.get('UIScene');
             const activeSkill = uiScene.activeSkillTag; 
-            if(activeSkill=='meteo'){
+            if(activeSkill==='meteo'){
             }else{
+                if(mob.type !='man' && activeSkill==='forceConv'){
+                    uiScene.shakeMpBar(); return ;
+                    return; // 거인은 현혹술로 개종 불가
+                }
                 this.handleMobClick(mob);
             }
             
@@ -499,8 +515,24 @@ class GameScene extends Phaser.Scene {
                 mob.range = 20;
                 mob.killUnit = 0.3; // 공격 시 때 30% 확률로 유닛 제거
                 mob.setScale(1.8);
-                mob.y -= 96; // 크기가 커졌으니 살짝 띄워줌
+                mob.y -= 48; // 크기가 커졌으니 살짝 띄워줌
                 mob.body.setOffset(0, Phaser.Math.Between(0, 10)); // 히트박스 위치 조정
+            break;
+            case 11:
+                //balista
+                mob.name = 'balista';
+                mob.type= 'balista';
+                mob.speed = mobData.speed || 90 +Math.random() * 30; // 이동 속도에 약간의 랜덤 요소 추가
+                mob.damage = mobData.damage || 1;
+                mob.score = mobData.score || 3;
+                mob.hp = mobData.hp || 5;
+                mob.range = 800;
+                mob.killUnit = 0.4; // 공격 시 때 10% 확률로 유닛 제거
+                mob.fireanime = `mob${mobData.mobNumber}_fire`;
+                mob.rangeWp ='arrow';
+                mob.attackTime = 2100;
+                mob.body.setOffset(0, Phaser.Math.Between(-20, -10)); // 히트박스 위치 조정
+                
             break;
         }
     }
@@ -838,6 +870,7 @@ class GameScene extends Phaser.Scene {
                     this.stat.archer --; // 궁병 제거
                     this.data.archerDeath++; 
                     if(this.stat.archer < 0) this.stat.archer = 0; // 음수 방지
+                    uiScene.shakeGarisonBar('archer');
                     
                     this.archerText.setText(`🏹 x${this.stat.archer}`);
                     if(this.stat.archer <= 0){
@@ -875,7 +908,19 @@ class GameScene extends Phaser.Scene {
                     this.data.witchDeath++;
                     if(this.stat.witch<0) this.stat.witch=0;//음수방지
                     uiScene.shakeMpBar(20);
+                    uiScene.shakeGarisonBar('witch');
                 }
+
+                //mason 유닛 제거
+                if(this.stat.mason>0 ){
+                    this.saveLoadScene.playSound('dead',3);
+                    console.log(`💀🪚 석공 사망 (${this.stat.mason} -> ${this.stat.mason-1})`);
+                    this.stat.mason--;
+                    this.data.masonDeath++;
+                    if(this.stat.mason<0) this.stat.mason=0;//음수방지
+                    uiScene.shakeGarisonBar('mason');
+                }
+
                 this.registry.set('stat', this.stat);
             }
         }
@@ -1403,13 +1448,25 @@ class GameScene extends Phaser.Scene {
     // GameScene 내부의 gameOver 함수
     gameOver() {
         this.isGameOver = true;
-        this.saveLoadScene.playBGM('bgm_defeat',false);
-        this.physics.pause(); // 게임 로직만 멈춤
+        this.saveLoadScene.playBGM('bgm_defeat', false);
+        
+        // 1. 물리 멈춤
+        this.physics.pause(); 
 
-        // UIScene을 GameScene 위에 띄움 (데이터 전달 가능)
-        this.events.emit('showGameOver', { score: this.score }); // UIScene에 신호 보냄
+        // 🌟 2. [추가] 진행 중인 모든 이동 트윈과 애니메이션도 함께 동결(Freeze)시킵니다!
+        this.tweens.pauseAll(); 
+        
+        // 화면에 있는 모든 스프라이트의 애니메이션 일시정지
+        this.children.each((child) => {
+            if (child.anims) {
+                child.anims.pause();
+            }
+        });
+
+        // UIScene을 GameScene 위에 띄움
+        this.events.emit('showGameOver', { score: this.score }); 
     }
-
+    
 
     saveGame() {
         const now = new Date();

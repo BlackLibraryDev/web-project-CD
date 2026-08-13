@@ -119,6 +119,7 @@ class UIScene extends Phaser.Scene {
 
         
         //점수 및 체력 초기화
+        this.statTexts = null;
         this.hpText = this.add.text(90, 20, 'Castle HP',  { 
             fontFamily: 'Arial', 
             fontSize: '24px', 
@@ -219,7 +220,10 @@ class UIScene extends Phaser.Scene {
             this.gameOverMenu.setVisible(true);
         });
 
-       
+        this.saveLoadScene.events.on('saveData', ()=>{
+            console.log('saveData')
+            this.saveButton.text.setText(`💾${this.getLangText('saved')}`);
+        });
 
         // 점수 업데이트 이벤트 리스너
         // 'changedata-이름' 형식을 사용합니다.
@@ -271,7 +275,8 @@ class UIScene extends Phaser.Scene {
             this.currentCategory = 'cathedral'; // 기본 카테고리 설정
             this.showCategory(this.currentCategory);
             this.drawHealthBar(this.healthBar, 50, 50 ); // 위치
-            this.drawStatText();
+           this.drawStatText();
+            this.statTextVisible(false);
             this.wave = this.registry.get('wave');
             this.drawWaveBar(this.waveBar);
             this.setSkillUIVisibility(false);
@@ -291,8 +296,20 @@ class UIScene extends Phaser.Scene {
             this.registry.events.off('changedata-stat');
             this.registry.events.off('changedata-playerUpgrades'); // 기존 리스너 제거 (중복 방지)
             this.registry.events.removeAllListeners(); // 혹시 남아있을 수 있는 다른 리스너들도 모두 제거
+
+            // 1. 현재 씬에서 재생 중인 모든 오디오 강제 정지
+            this.sound.stopAll();
+
+            // 2. 실행 중인 모든 트윈(애니메이션) 제거
+            this.tweens.killAll();
+
+            this.statTexts = null;
+
         });
 
+        
+
+        
         
     }
      pressKey(num){
@@ -351,12 +368,14 @@ class UIScene extends Phaser.Scene {
         this.waveText.setText(`Wave ${this.wave.value || 1}`);
     }
     drawManaBar(graphics, x = 0, y = -140){
+        
+        const {width, height} = this.cameras.main;
         let maxWidth =200;
         let mptxt =``;
         let mptxtend =``;
         if(this.upgradeWindow.visible){
             x= -450;
-            y= -380;
+            y= -600;
             maxWidth = 100;
             mptxt = 'MP: ';
             mptxtend='  ';
@@ -365,7 +384,6 @@ class UIScene extends Phaser.Scene {
             //mptxtend =`           `;
         }
 
-        const {width, height} = this.cameras.main;
         const barWidth = 100 +  (this.stat.maxMp >maxWidth? maxWidth : this.stat.maxMp ); 
         
         graphics.clear();
@@ -382,6 +400,40 @@ class UIScene extends Phaser.Scene {
         this.manaTxt.y = config.height+y-20;
        
 
+    }
+    shakeGarisonBar(type, shakeIntensity = 8){
+        // 1. 쉐이크 효과를 적용할 그래픽스 객체
+        if(this.garrisonshakeTween && this.garrisonshakeTween.isActive()){
+            return;
+        }
+        let graphics = this.garrisonUI[type].container;//.baseBox;
+        const originalX = graphics.x;
+        const originalY = graphics.y;
+        
+        this.garrisonshakeTween = this.tweens.add({
+            targets: graphics,
+            // 최초 목적지를 랜덤하게 잡습니다.
+            x: originalX + Phaser.Math.Between(-shakeIntensity, shakeIntensity),
+            y: originalY + Phaser.Math.Between(-shakeIntensity, shakeIntensity),
+            duration: 40, // 💡 지진 느낌을 주려면 0.04초 정도로 아주 빠르게 꺾여야 합니다.
+            yoyo: true,
+            repeat: -1,
+            ease: 'Linear', // 지진은 부드러운 곡선(Sine)보다 직선(Linear)이 훨씬 타격감 있습니다.
+            
+            // 🔄 [핵심] 한 번 왕복(Yoyo)할 때마다 다음 흔들릴 목적지를 상하좌우 무작위로 새로 고칩니다.
+            onYoyo: () => {
+                this.garrisonshakeTween .updateTo('x', originalX + Phaser.Math.Between(-shakeIntensity, shakeIntensity));
+                this.garrisonshakeTween .updateTo('y', originalY + Phaser.Math.Between(-shakeIntensity, shakeIntensity));
+            }
+        });
+        // 3. 1초 뒤 흔들림 멈춤 (지연 호출 사용)
+        this.time.delayedCall(400, () => {
+            this.garrisonshakeTween.stop(); // 쉐이크 애니메이션 멈춤
+            this.garrisonshakeTween = null;
+            // 그래픽스 객체 위치 초기화 (선택 사항)
+            graphics.x = originalX;
+            graphics.y = originalY;
+        });
     }
     shakeMpBar(shakeIntensity = 8){
         // 1. 쉐이크 효과를 적용할 그래픽스 객체
@@ -410,7 +462,7 @@ class UIScene extends Phaser.Scene {
         });
 
         // 3. 1초 뒤 흔들림 멈춤 (지연 호출 사용)
-        this.time.delayedCall(300, () => {
+        this.time.delayedCall(400, () => {
             this.manabarshakeTween.stop(); // 쉐이크 애니메이션 멈춤
             this.manabarshakeTween = null;
             // 그래픽스 객체 위치 초기화 (선택 사항)
@@ -437,6 +489,14 @@ class UIScene extends Phaser.Scene {
         this.hpText.x = x; // 체력바와 같은 X 위치로 이동
         this.hpText.setDepth(12);
     }
+    statTextVisible(visible){
+        this.statTexts.armor.setVisible(visible);
+        this.statTexts.manPower.setVisible(visible);
+        this.statTexts.gold.setVisible(visible);
+        this.statTexts.archer.setVisible(visible);
+        this.statTexts.witch.setVisible(visible);
+        this.statTexts.mason.setVisible(visible);
+    }
     drawStatText() {
         // 기존 텍스트 하나로 다 쓰던 것을 지우고, 각각 독립된 객체로 제어합니다.
         
@@ -444,6 +504,7 @@ class UIScene extends Phaser.Scene {
         const X = 0; // 텍스트 시작 X 좌표
         const Y = 80; // 텍스트 시작 Y 좌표
         const goldAmount = this.registry.get('gold')?.toLocaleString() || 0;
+
 
         // 💡 멋진 텍스트 스타일 세팅 (그림자 및 폰트 두께 조절)
         const textStyle = { 
@@ -454,7 +515,6 @@ class UIScene extends Phaser.Scene {
             stroke: '#000000',
             strokeThickness: 3 // 글자 테두리를 주면 가독성이 확 올라갑니다.
         };
-
         // 만약 기존에 텍스트 객체들이 생성되지 않았다면 최초 1회 생성합니다.
         if (!this.statTexts) {
             this.statTexts = {};
@@ -495,7 +555,6 @@ class UIScene extends Phaser.Scene {
         if(this.stat.witch > 0){
             upkeepCost += this.stat.witchCost*this.stat.witch; // 마법사 1명당 유지비 골드
         }   
-
         this.statTexts.gold.setText(`💰 ${goldAmount} (-💸${upkeepCost})`).setColor('#f1c40f'); // 황금색
         this.statTexts.armor.setText(`🛡️ ${this.stat.armor}`).setColor('#ff8000ff'); // 빨간색 계열
         this.statTexts.manPower.setText(`👥 ${this.stat.manPower}/${this.stat.house}`).setColor('#9b59b6'); // 파란색 계열
@@ -513,7 +572,7 @@ class UIScene extends Phaser.Scene {
         this.statTexts.mason.setDepth(22);
 
         if(this.nextWaveBtn){
-            this.nextWaveBtn.setText(`${this.getLangText('nextWave')}${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
+            this.nextWaveBtn.text.setText(`${this.getLangText('nextWave')}${upkeepCost>0 ? ` (-💸${upkeepCost})` : ''}`);
         }
     }
     drawPauseMenu(){
@@ -888,12 +947,17 @@ class UIScene extends Phaser.Scene {
 
         // 1. 데이터 정의
 
-        const title = this.add.text(0, -240, '업그레이드', { fontSize: '36px', fill: '#ffffff', padding:{x:3,y:3} }).setOrigin(0.5);
+        //const title = this.add.text(0, -240, '업그레이드', { fontSize: '36px', fill: '#ffffff', padding:{x:3,y:3} }).setOrigin(0.5);
+        
+        const title = this.makeButton(200,60, -width/2 +150 , -160, `${this.getLangText('upgrade')}`);
+        title.box.setAlpha(0);
+        title.text.setFontSize(`40px`) ;
         this.upgradeWindow.add(title);
 
         //this.costTxt = this.add.text(0, 220, `Cost : ${0}`, { fontSize: '28px', fill: '#ff0', padding:{x:3,y:3} }).setOrigin(0.5);
         //this.upgradeWindow.add(this.costTxt);    
         //this.fcostTxt(this.registry.get('gold') || 0); // 초기 비용 텍스트 설정
+        /*
         const nextBg = this.add.rectangle(width/2-220 , 280, 320,  60,  0x444444).setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true }).setOrigin(0.5)
         this.nextWaveBtn = this.add.text(width/2-220, 280, '다음 웨이브', {
@@ -906,6 +970,15 @@ class UIScene extends Phaser.Scene {
             this.nextGameStart();
         });
         this.upgradeWindow.add([nextBg, this.nextWaveBtn]);
+        */
+
+        this.nextWaveBtn = this.makeButton(300,80, width/2-220, 280, `${this.getLangText('nextWave')}`);
+        this.nextWaveBtn.box.setAlpha(0);
+        this.nextWaveBtn.text.setFontSize('36px')
+        this.nextWaveBtn.on('pointerdown', () => {
+            this.nextGameStart();
+        });
+        this.upgradeWindow.add(this.nextWaveBtn);
 
         //저장버튼
         this.saveButton = this.makeButton(200,60, -width/2 +150 , 180, `💾${this.getLangText('save')}`);
@@ -915,6 +988,16 @@ class UIScene extends Phaser.Scene {
             return;
         });
         this.upgradeWindow.add([this.saveButton]);
+
+         //저장버튼
+        this.returnButton = this.makeButton(200,60, -width/2 +150 , 285, `${this.getLangText('back')}`);
+        this.returnButton.box.setAlpha(0);
+        this.returnButton.on('pointerdown', (pointer, localX, localY, event) => {
+            this.restartGame();
+            return;
+        });
+        this.upgradeWindow.add([this.returnButton]);
+
 
         // 2. 카테고리 이름들만 배열로 추출
         // 결과: ['지휘소', '성당', '궁수양성소', '마술사의 샘']
@@ -927,7 +1010,7 @@ class UIScene extends Phaser.Scene {
             'barracks' : `🏹${this.getLangText('barracks')}`,
             'magichall' : `🪄${this.getLangText('magichall')}`
         }
-
+        this.categoryBtText = {};
         // 3. 추출된 이름을 바탕으로 버튼 생성
        categories.forEach((name, index) => {
              if(this.selectedCategory === null) {
@@ -935,6 +1018,17 @@ class UIScene extends Phaser.Scene {
                 this.showCategory(name); // 첫 번째 카테고리 자동 선택
             }
 
+            const categoryBt = this.makeButton(180,50, -width/2 +150 ,-100+ index*60, categoryNames[name]);
+            categoryBt.box.setAlpha(0);
+            this.upgradeWindow.add(categoryBt);
+            this.categoryBtText[name] = categoryBt.text;
+            categoryBt.on('pointerdown', () => {
+                this.selectedCategory = name; // 선택된 카테고리 업데이트
+                this.showCategory(name);
+            });
+            
+            return;
+            /*
             const xPos = -200 + (index * 180); // 150px 간격으로 배치
             const yPos = -190;
 
@@ -965,7 +1059,7 @@ class UIScene extends Phaser.Scene {
                 });
 
             this.upgradeWindow.add([bg, txt]);
-            
+            */
         });
         this.upgradeWindow.setDepth(11); // hp바와 pause사이
     }
@@ -973,7 +1067,7 @@ class UIScene extends Phaser.Scene {
     showCategory(categoryName) {
         const { width, height } = this.cameras.main;
         const X = -380; // 텍스트 시작 X 좌표
-        const Y = 80; // 텍스트 시작 Y 좌표
+        const Y = -50; // 텍스트 시작 Y 좌표
 
         // 1. 기존 리스트 싹 비우기 (중요!)
         this.contentArea.removeAll(true);
@@ -983,12 +1077,22 @@ class UIScene extends Phaser.Scene {
         const categoryItems = allUpgrades[categoryName];
 
         if (!categoryItems) return; // 데이터가 없으면 중단
-
+        Object.values(this.categoryBtText).forEach((textObj) => {
+            textObj.setFontSize('28px');
+            textObj.setTint(0x888888);
+        });
+        if(this.categoryBtText){
+            if(this.categoryBtText[categoryName]){
+                this.categoryBtText[categoryName].setFontSize('32px');
+                this.categoryBtText[categoryName].setTint(0xffffff)
+            }
+        }
+        
         categoryItems.forEach((item, index) => {
             //console.log(`업그레이드 항목:`, item.name);
 
             // y 좌표를 index를 활용해 아래로 나열 (간격 50px)
-            const yPos = index * 80;
+            const yPos = Y + index * 80;
 
             // 항목 이름 및 레벨 텍스트
             let itemDisplayName = item.name;
@@ -1200,6 +1304,7 @@ class UIScene extends Phaser.Scene {
 
             const x = 70 + (index * spacing);
             const y = height -60;
+            const container = this.add.container(0,0);
 
             const baseBox = this.add.graphics();
             baseBox.fillStyle(0xffffff, 1);
@@ -1238,9 +1343,11 @@ class UIScene extends Phaser.Scene {
                     }
                    // stackText.setText(this.stat[garrison.tag]);
              });
+             container.add([baseBox, icon, keyText, stackText]);
               // 6. 모든 데이터를 바구니에 저장
             this.garrisonUI[garrison.tag] = {
                 tag: garrison.tag,
+                container: container,
                 baseBox: baseBox,
                 keytext: keyText,
                 stacktext: stackText,
@@ -1299,7 +1406,7 @@ class UIScene extends Phaser.Scene {
 
             const x = startX + (index * spacing);
             const y = startY;
-            
+            const container = this.add.container(0,0);
 
             // 1. 🔲 기본 바탕 상자 (언제나 불투명한 은은한 흑색)
             const baseBox = this.add.graphics();
@@ -1347,6 +1454,7 @@ class UIScene extends Phaser.Scene {
             
             // 6. 모든 데이터를 바구니에 저장
             this.skillUIComponents[skill.tag] = {
+                container: container,
                 baseBox: baseBox,
                 coolShadow: coolShadow,
                 icon: icon,
@@ -1615,16 +1723,20 @@ class UIScene extends Phaser.Scene {
     // 4. 다시 시작 로직 함수
     restartGame() {
         // 완전 재시작 
-        /*
+        //window.location.reload();
+        //return;
+        
         // 2. 💡 모든 씬을 완전히 종료(stop)하고 메인 화면으로 보내거나 GameScene을 처음부터 다시 켭니다.
         // 씬을 완전히 내렸다가(stop) 다시 시작하면 내부 이벤트 리스너들도 깨끗하게 청소됩니다.
+
         this.scene.stop('UIScene');
         this.scene.stop('GameScene');
-        this.cameras.main.off(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE);
+        //this.scene.stop('SaveLoadScene');
+        //this.cameras.main.off(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE);
         // 3. 메인 메뉴 씬으로 완전히 돌아가서 처음부터 다시 시작하게 만듭니다.
         this.scene.start('MainMenuScene');
-            */
-        window.location.reload();
+            
+        
     }
 
     getLangText(key) {

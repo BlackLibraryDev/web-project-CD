@@ -120,13 +120,6 @@ class MainMenuScene extends Phaser.Scene {
         }).setOrigin(0).setInteractive({ useHandCursor: true });
 
 
-        const noticeButton = this.add.text(width *0.9, height * 0.9, `${this.getLangText('notice')}`, {
-            fontFamily: 'Impact, Arial Black, sans-serif',
-            fontSize: '32px',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 6
-        }).setOrigin(0).setInteractive({ useHandCursor: true });
         // 마우스 올렸을 때 효과
         startButton.on('pointerover', () => startButton.setColor('#ffffff').setScale(1.1));
         startButton.on('pointerout', () => startButton.setColor('#ffcc00').setScale(1.0));
@@ -159,10 +152,7 @@ class MainMenuScene extends Phaser.Scene {
             this.saveloadscene.drawHowToList();
             return;
         });
-        noticeButton.on('pointerdown', (pointer) => {
-            this.saveloadscene.openNoticeWindow();
-            return;
-        });
+
 
 
         if (!this.scene.isActive('SaveLoadScene')) {
@@ -200,7 +190,9 @@ class MainMenuScene extends Phaser.Scene {
     }
     newGameStart( data = null){
         this.mainmenuSpawn.destroy(); // 몹 생성 타이머 제거
+        //this.scene.stop('SaveLoadScene'); // SaveLoadScene 종료
         this.scene.start('GameScene' ,data );
+        return;
     }
 
     getLangText(key) {

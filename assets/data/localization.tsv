@@ -19,6 +19,7 @@ saveClose	저장 후 닫기	Save & Close
 close	닫기	Close
 cancel	취소	Cancel
 save	저장하기	Save
+saved	저장됨	Saved
 basic	기본	Basics
 garrison	주둔군	Garrisons
 archer	궁수	Archer
@@ -32,6 +33,7 @@ empty	비어 있음	Empty
 loadGame	불러오기	Load a Game
 saveGame	저장하기	Save a Game
 confirm	확인	Confirm
+back	돌아가기	Back
 slotIsDeleted	번째 슬롯을 삭제합니다.// 계속하시겠습니까?	slot will be deleted.// Continue?
 slotIsSaved	번째 슬롯에 진행사항이 저장됩니다.// 계속하시겠습니까?	this slot will be saved.// Continue?
 score	점수	Score
@@ -39,7 +41,7 @@ wave	웨이브	wave
 nextWave	다음 웨이브	Next Wave
 paused	일시정지	Paused
 restart	다시 시작	Restart
-restartConfirm	정말로 재시작하겠습니까?//(페이지를 새로고침 합니다)	Are you sure about restart?\\(Refresh this web page)
+restartConfirm	메인화면으로 돌아갑니다	Return to the main menu
 unitKill	쓰러트린 적	Unit Kills
 unitConv	개종시킨 적	Conversions
 earnGold	획득한 금화	Earning

@@ -27,87 +27,7 @@ class SaveLoadScene extends Phaser.Scene {
 
         this.registry.set('optionData', this.gameOption  );
 
-        this.noticeData = [
-            { date: "2026.06.07", title: "업데이트 - 침묵의 소음(silent noise)",
-                 content: "* 대부분의 효과음이 추가되었습니다\n* 파쿠리해온 BGM을 넣었습니다. 이후 교체 예정입니다\n* 스킬 창의 약간의 UI개선\n* 플레이 가이드와 환경설정 추가" },
-            { date: "2026.05.28", title: "업데이트 - 숙련된 기술(skilful skill)",
-                 content: "* 집중사격(일제사)이 추가되었습니다. 모든 궁수가 적에게 집중 사격합니다\n* 마나 및 마녀의 스킬이 추가되었습니다\n* 저주와 강제 개종이 추가되었습니다.\n* 마녀가 많을수록 마녀 회복량이 늘고 쿨다운이 감소합니다." },
-            { date: "2026.05.26", title: "업데이트 - 세이브 더 월드(Save the World)", 
-                content: "* 저장 슬롯이 3개로 늘었습니다." },
-            { date: "2026.05.22", title: "업데이트 - 주둔군(Garrison)", 
-                content: "* 적 궁병과 거인의 공격은 일정 확률로 주둔군을 살해합니다\n* 축성술로 주둔군의 부상 확률을 낮출 수 있습니다\n* 난이도, 결과창 UI 조절\n* 모바일 유저를 위한 전체화면 버튼 지원" },
-            { date: "2026.05.21", title: "업데이트 - 거인의 반격", 
-                content: "* 거인이 추가되었습니다. 거인은 드래그되지 않습니다.\n* 거인은 공격 시 일정 확률로 성에 주둔중인 유닛(궁사)을 살해합니다\n* 업그레이드 창의 UI 개선" }
-        ];
-
-        // 2️⃣ 🖤 [빈 배경] 클릭 시 창이 닫히는 거대한 반투명 블랙 스크린
-        // Rectangle 방식은 setInteractive() 한 줄로 에러 없이 완벽하게 클릭 영역이 잡힙니다.
-        this.closeBackground = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.4);
-        this.closeBackground.setInteractive();
-        this.closeBackground.on('pointerdown', () => {
-            console.log("빈 배경 클릭 ➔ 공지사항 닫기");
-            this.closeNoticeWindow();
-        });
-
-        // 3️⃣ 📦 [공지창 메인 컨테이너] 화면 중앙 배치
-        const winW = 560;
-        const winH = 400;
-        this.noticeWindow = this.add.container(width / 2, height / 2);
-
-        // 4️⃣ 🟫 [공지창 배경 박스] 에러 없는 Rectangle 방식으로 생성 및 테두리 설정
-        const bg = this.add.rectangle(0, 0, winW, winH, 0x111111, 0.95);
-        bg.setStrokeStyle(3, 0xffffff, 1); // 두께 3px, 흰색 테두리 설정
-
-        // 💡 [방어 코드] 공지창 안쪽을 누를 땐 뒤의 'closeBackground'로 클릭이 뚫고 가지 않도록 차단
-        bg.setInteractive();
-        bg.on('pointerdown', (pointer, localX, localY, event) => {
-            if (event) event.stopPropagation(); // 클릭 이벤트 전파 완전 차단
-        });
-        this.noticeWindow.add(bg);
-
-        // 5️⃣ 🔤 [타이틀 텍스트] 
-        const titleTxt = this.add.text(0, -winH / 2 + 25,this.getLangText('notice'), { 
-            fontSize: '24px', 
-            fill: '#ffffff', 
-            fontWeight: 'bold' 
-        }).setOrigin(0.5);
-        this.noticeWindow.add(titleTxt);
-
-        // 6️⃣ 📜 [공지 목록 컨테이너] 실제 글자들이 누적되어 담기고 움직일 상자
-        // 위치는 공지창의 좌상단 여백(X: -230, Y: -140)을 기준으로 잡습니다.
-        this.listContainer = this.add.container(width / 2 - winW / 2 + 20, height / 2 - winH / 2 + 60);
-
-        // 7️⃣ 🎭 [원형/사각형 마스크 영역] 창문 밖으로 튀어나간 텍스트 가리기
-        // 마스크 판정은 여전히 Graphics가 가장 안정적이므로, 체이닝 없이 안전하게 생성합니다.
-        const maskGraphics = this.add.graphics();
-        maskGraphics.setVisible(false);
-        maskGraphics.fillStyle(0xffffff, 1);
-        // 공지가 노출될 네모 창틀 영역 그리기
-        maskGraphics.fillRect(width / 2 - winW / 2 + 15, height / 2 - winH / 2 + 55, winW - 30, winH - 85);
         
-        const contentMask = maskGraphics.createGeometryMask();
-        this.listContainer.setMask(contentMask);
-
-        // 8️⃣ ✍️ [공지사항 출력] 데이터를 화면에 리스트 형태로 쌓기
-        this.drawNoticeList();
-
-        // 9️⃣ 🖱️ [스크롤 이벤트] 마우스 휠 작동
-        this.input.on('pointerwheel', (pointer, over, deltaX, deltaY, deltaZ) => {
-            // 마우스 커서가 공지창 내부 영역에 있을 때만 스크롤 작동시킴
-            if (pointer.x > (width/2 - winW/2) && pointer.x < (width/2 + winW/2) &&
-                pointer.y > (height/2 - winH/2) && pointer.y < (height/2 + winH/2)) {
-                
-                this.listContainer.y -= deltaY * 0.5; // 스크롤 속도 조절
-
-                // 🛑 위아래 스크롤 오버플로우 한계선 고정
-                const minY = height / 2 - winH / 2 + 60; // 최초 Y 위치
-                const maxY = minY + Math.max(0, this.totalListHeight - (winH - 100));
-
-                if (this.listContainer.y > minY) this.listContainer.y = minY;
-                if (this.listContainer.y < -maxY + (height / 2)) this.listContainer.y = -maxY + (height / 2);
-            }
-        });
-        this.closeNoticeWindow();
 
          //option
         this.optionWindow = this.add.container(0, 0).setVisible(false);
@@ -136,78 +56,7 @@ class SaveLoadScene extends Phaser.Scene {
     }
 
 
-    
-/**
-     * 📝 공지사항 데이터를 세로 방향으로 누적하여 그려주는 함수
-     */
-    drawNoticeList() {
-        this.listContainer.removeAll(true); // 기존 컴포넌트 청소
-
-        let currentY = 0; // 아래로 유동적으로 더해질 Y축 누적 변수
-        const listWidth = 560;
-
-        this.noticeData.forEach((data) => {
-            // 개별 공지 한 덩어리를 묶을 임시 아이템 컨테이너
-            const itemBox = this.add.container(0, currentY);
-
-            // 날짜 표시 (파란색 강조)
-            const dateTxt = this.add.text(0, 0, `[${data.date}]`, { fontSize: '14px', fill: '#0076d7', fontWeight: 'bold' });
-            // 제목 표시
-            const titleTxt = this.add.text(110, 0, data.title, { fontSize: '16px', fill: '#ffffff', fontWeight: 'bold' });
-            
-            // 본문 표시 (창 크기에 맞춰 자동 줄바꿈)
-            const contentTxt = this.add.text(10, 25, data.content, { 
-                fontSize: '14px', 
-                fill: '#cccccc',
-                wordWrap: { width: listWidth - 20 } 
-            });
-
-            // 점선/구분선 대용 사각형 라인 (Rectangle 방식으로 안전하게 드로잉)
-            const lineY = contentTxt.y + contentTxt.displayHeight + 15;
-            const line = this.add.rectangle(listWidth / 2, lineY, listWidth, 1, 0x444444, 0.8);
-
-            // 묶음 세트에 추가
-            itemBox.add([dateTxt, titleTxt, contentTxt, line]);
-            this.listContainer.add(itemBox);
-
-            // 🔥 [누적의 핵심] 현재 공지사항 총 높이 + 마진만큼 다음 공지 시작점을 밑으로 밀어냄
-            currentY += lineY + 15;
-        });
-
-        // 스크롤 계산용 총 세로 길이 저장
-        this.totalListHeight = currentY;
-    }
-    openNoticeWindow() {
-        this.closeBackground.setVisible(true);
-        this.noticeWindow.setVisible(true);
-        this.listContainer.setVisible(true);
-        
-        // 창이 다시 열릴 때 스크롤 위치를 항상 최상단(처음 위치)으로 리셋해 줍니다.
-        const winH = 400;
-        this.listContainer.y = this.cameras.main.height / 2 - winH / 2 + 60;
-    }
-    /**
-     * 🚪 공지사항 창 전체를 화면에서 숨기는 함수
-     */
-    closeNoticeWindow() {
-        this.closeBackground.setVisible(false);
-        this.noticeWindow.setVisible(false);
-        this.listContainer.setVisible(false);
-    }
-
-    /**
-     * 🚀 외부에서 새로운 공지를 실시간으로 밀어 넣고 싶을 때 사용하는 함수
-     */
-    addNewNotice(title, content) {
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-        
-        // 배열 가장 첫 번째에 추가하여 항상 최상단에 누적되도록 함
-        this.noticeData.unshift({ date: dateStr, title: title, content: content });
-        
-        // 화면 리프레시 리드로잉
-        this.drawNoticeList();
-    }
+  
     makeButton(sizeX, sizeY, posX, posY, text) {
         // 1️⃣ 박스와 텍스트를 하나로 묶어줄 '컨테이너'를 생성합니다.
         // 💡 팁: 컨테이너의 기준 좌표를 posX, posY로 잡으면 관리하기 편합니다.
@@ -465,7 +314,6 @@ class SaveLoadScene extends Phaser.Scene {
                 itemContainer.add([bt31, bt32])
             }
         }
-        
         
 
         const bt1 = this.makeButton(160,50,posX, posY +5, "사운드");
@@ -963,7 +811,7 @@ class SaveLoadScene extends Phaser.Scene {
     }
     saveGameRawData(storageName, rawData){
         localStorage.setItem(storageName, JSON.stringify(rawData));
-        
+        this.events.emit('saveData');
         console.log(`💾 게임이 안전하게 저장되었습니다!`, rawData);
     }
     showOkPopup(message, onConfirm){
@@ -1029,7 +877,6 @@ class SaveLoadScene extends Phaser.Scene {
 
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-
         // 2. 팝업 컨테이너 생성
         this.confirmPopup = this.add.container(0, 0);
         this.confirmPopup.setDepth(50);
