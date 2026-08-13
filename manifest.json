@@ -1,9 +1,7 @@
 {
-  "short_name": "DuC",
+  "short_name": "Defend ur Castle",
   "name": "Defend your castle",
   "icons": [
-    
-
       {
    "src": "\/assets/favicons/android-icon-36x36.png",
    "sizes": "36x36",
@@ -41,7 +39,7 @@
    "density": "4.0"
   }
   ],
-  "start_url": "/" ,
+  "start_url": "/index.html" ,
   "background_color": "#000000",
   "theme_color": "#000000",
   "display": "standalone",
