@@ -10,6 +10,7 @@ const config = {
         // 모바일 대응을 위해 너비/높이를 100%로 설정 가능
         width: 1200,
         height: 720,
+        orientation: Phaser.Scale.LANDSCAPE
     },
     physics: {
         default: 'arcade',
