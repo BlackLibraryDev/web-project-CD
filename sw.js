@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
 
 // 1. 서비스 워커 설치 및 필수 파일 캐싱
 self.addEventListener('install', (event) => {
+    return;
   // 새 서비스 워커가 등록되는 즉시 대기 없이 활성화되도록 강제함
   self.skipWaiting();
   
@@ -20,6 +21,7 @@ self.addEventListener('install', (event) => {
 
 // 2. 서비스 워커 활성화 시 이전 버전 캐시 정리 및 즉시 제어 권한 획득
 self.addEventListener('activate', (event) => {
+    return;
   event.waitUntil(
     // 현재 열려있는 모든 탭/페이지를 새 서비스 워커가 즉시 제어하도록 설정
     self.clients.claim().then(() => {
@@ -39,6 +41,7 @@ self.addEventListener('activate', (event) => {
 
 // 3. 요청 가로채기 (제공해주신 코드 + 안전망 결합)
 self.addEventListener('fetch', (event) => {
+    return;
   // 크롬 확장 프로그램이나 chrome-extension:// 요청은 캐싱에서 제외 (에러 방지)
   if (!event.request.url.startsWith(self.location.origin)) {
     return;

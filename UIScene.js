@@ -1079,12 +1079,12 @@ class UIScene extends Phaser.Scene {
         if (!categoryItems) return; // 데이터가 없으면 중단
         Object.values(this.categoryBtText).forEach((textObj) => {
             textObj.setFontSize('28px');
-            textObj.setTint(0x888888);
+            textObj.setStyle({ fill: '#777777' });
         });
         if(this.categoryBtText){
             if(this.categoryBtText[categoryName]){
                 this.categoryBtText[categoryName].setFontSize('32px');
-                this.categoryBtText[categoryName].setTint(0xffffff)
+                this.categoryBtText[categoryName].setStyle({ fill: '#ffffff' });
             }
         }
         

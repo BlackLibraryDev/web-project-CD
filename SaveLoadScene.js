@@ -363,17 +363,28 @@ class SaveLoadScene extends Phaser.Scene {
             this.drawOptionList(false);
         }
     }
-
-
+    
+    drawHowToListColor(){
+        this.howtoListText.forEach((textObj) => {
+            textObj.text.setStyle({ fill: '#777777' });
+            textObj.text.setText( textObj.text.text.replace('*','') );
+        });
+    }
     drawHowToList(visible =true ){
         this.howToWindow.visible = visible;
         this.howToWindow.removeAll(true);
+        this.howtoListText = [];
         if(!visible){
             return;   
         }
         this.howToWindow = this.add.container(0, 0).setVisible(visible);
         const { width, height } = this.cameras.main;
 
+        /* 글씨 흑색
+        Object.values(this.categoryBtText).forEach((textObj) => {
+            textObj.setStyle({ fill: '#777777' });
+        });
+        */
         // 1. 🖤 뒷배경 어두운 반투명 가림막 생성
         const bg = this.add.graphics();
         bg.fillStyle(0x000000, 0.9);
@@ -427,22 +438,31 @@ class SaveLoadScene extends Phaser.Scene {
             wordWrap: { width: listWidth - 20 } 
         }).setOrigin(0,0);
         this.howToWindow.add(txt);
+        
 
         const itemContainer =this.add.container(0,0).setDepth(3);
 
-        const bt1 = this.makeButton(160,50,posX, posY +0, `${this.getLangText('basic')}`);
+        
+        const bt1 = this.makeButton(260,50,posX, posY +0, `${this.getLangText('basic')}`);
         bt1.box.setAlpha(0);
         bt1.text.setOrigin(0,0.5).setFontSize(36);
         bt1.on('pointerdown', (pointer) => {
+            this.drawHowToListColor();
+            bt1.text.setStyle({ fill: '#ffffff' });
+            bt1.text.setText( `*${bt1.text.text.replace('*','')}` )
             itemContainer.removeAll(true);
             txt.setText(txt0);
         });
         this.howToWindow.add(bt1);
+        this.howtoListText.push(bt1)
 
-        const bt2 = this.makeButton(160,50,posX,posY +80, `${this.getLangText('garrison')}`);
+        const bt2 = this.makeButton(260,50,posX,posY +80, `${this.getLangText('garrison')}`);
         bt2.box.setAlpha(0);
         bt2.text.setOrigin(0,0.5).setFontSize(36);
         bt2.on('pointerdown', (pointer) => {
+            this.drawHowToListColor();
+            bt2.text.setStyle({ fill: '#ffffff' });
+            bt2.text.setText( `*${bt2.text.text.replace('*','')}` )
             itemContainer.removeAll(true);
             const cath = this.add.sprite(360,260 ,'cathedral').setDisplaySize(128,128); 
             cath.anims.play('cathedral_fire', true);
@@ -456,11 +476,15 @@ class SaveLoadScene extends Phaser.Scene {
 주둔군을 고용하게 되면 💸유지비가 소모되며, 💸유지비를 내지 못할 경우 주둔군을 해고하게 됩니다.`);
         });
         this.howToWindow.add(bt2);
+        this.howtoListText.push(bt2);
 
-        const bt2_1 = this.makeButton(180,40,posX+20,posY +140, `${this.getLangText('garrison')}-${this.getLangText('archer')}`);
+        const bt2_1 = this.makeButton(280,40,posX+20,posY +140, `${this.getLangText('garrison')}-${this.getLangText('archer')}`);
         bt2_1.box.setAlpha(0);
         bt2_1.text.setOrigin(0,0.5);
         bt2_1.on('pointerdown', (pointer) => {
+            this.drawHowToListColor();
+            bt2_1.text.setStyle({ fill: '#ffffff' });
+            bt2_1.text.setText( `*${bt2_1.text.text.replace('*','')}` )
             itemContainer.removeAll(true);
             const archer = this.add.sprite(900, 330, 'archer');
             archer.anims.play('archer_fire', true);
@@ -475,11 +499,16 @@ class SaveLoadScene extends Phaser.Scene {
 `);
         });
         this.howToWindow.add(bt2_1);
+        this.howtoListText.push(bt2_1);
 
-        const bt2_2 = this.makeButton(180,40,posX+20,posY +195, `${this.getLangText('garrison')}-${this.getLangText('witch')}`);
+        const bt2_2 = this.makeButton(280,40,posX+20,posY +195, `${this.getLangText('garrison')}-${this.getLangText('witch')}`);
         bt2_2.box.setAlpha(0);
         bt2_2.text.setOrigin(0,0.5);
+        bt2_2.text.setStyle({ fill: '#777777' });
         bt2_2.on('pointerdown', (pointer) => {
+            this.drawHowToListColor();
+            bt2_2.text.setStyle({ fill: '#ffffff' });
+            bt2_2.text.setText( `*${bt2_2.text.text.replace('*','')}` )
             itemContainer.removeAll(true);
             txt.setText( `🪄마녀의 샘 에서 👥예비인력을 소모하여 🪄마녀를 채용할 수 있습니다.
 
@@ -491,11 +520,17 @@ class SaveLoadScene extends Phaser.Scene {
 `);
         });
         this.howToWindow.add(bt2_2);
+        this.howtoListText.push(bt2_2);
 
-        const bt3 = this.makeButton(160,50,posX,posY +270, this.getLangText('fortification'));
+        const bt3 = this.makeButton(260,50,posX,posY +270, this.getLangText('fortification'));
         bt3.box.setAlpha(0);
         bt3.text.setOrigin(0,0.5).setFontSize(36);
+        bt3.text.setStyle({ fill: '#777777' });
         bt3.on('pointerdown', (pointer) => {
+            this.drawHowToListColor();
+             bt3.text.setStyle({ fill: '#ffffff' });
+            bt3.text.setText( `*${bt3.text.text.replace('*','')}` )
+
             itemContainer.removeAll(true);
             const castle0 = this.add.sprite(width *0.37, 440, 'castleSprite').setScale(0.8);
             castle0.anims.play('castle0');
@@ -521,6 +556,12 @@ class SaveLoadScene extends Phaser.Scene {
                 `);
         });
         this.howToWindow.add(bt3);
+        this.howtoListText.push(bt3);
+
+        this.drawHowToListColor();
+        bt1.text.setStyle({ fill: '#ffffff' });
+        bt1.text.setText( `*${bt1.text.text.replace('*','')}` )
+        //기본값 선택
 
         const xbt = this.makeButton(160,50, width/2, height-50, this.getLangText('close'));
         xbt.box.setAlpha(0);
