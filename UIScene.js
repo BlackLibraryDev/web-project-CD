@@ -521,21 +521,27 @@ class UIScene extends Phaser.Scene {
             
             // 💰 골드 아이콘과 텍스트 배치
             //this.add.image(X+20, Y + 30, 'icon_gold').setOrigin(0, 0.5).setScale(0.8);
-             this.statTexts.gold = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
+             this.statTexts.gold 
+             = this.add.text(X+50, Y + 30, '', textStyle).setOrigin(0, 0.5);
             // 🛡️ 방어력 아이콘과 텍스트 배치
            // this.add.image(X+20,Y + 65, 'icon_armor').setOrigin(0, 0.5).setScale(0.8);
-             this.statTexts.armor = this.add.text(X+50, Y + 65, '', textStyle).setOrigin(0, 0.5);
+             this.statTexts.armor 
+             = this.add.text(X+300, Y + 30, '', textStyle).setOrigin(0, 0.5);
             // 👥 인원 아이콘과 텍스트 배치 (Y축 간격을 35px씩 띄웁니다)
             //this.add.image(X+20, Y + 100, 'icon_manpower').setOrigin(0, 0.5).setScale(0.8);
             
-            this.statTexts.manPower = this.add.text(X+50, Y + 100, '', textStyle).setOrigin(0, 0.5);
+            this.statTexts.manPower 
+            = this.add.text(X+450, Y + 30, '', textStyle).setOrigin(0, 0.5);
             //🏹
             
-            this.statTexts.archer = this.add.text(X+50, Y + 135, '', textStyle).setOrigin(0, 0.5);
+            this.statTexts.archer
+            = this.add.text(X+600, Y + 30, '', textStyle).setOrigin(0, 0.5);
             
-            this.statTexts.witch = this.add.text(X+50, Y + 170, '', textStyle).setOrigin(0, 0.5);
+            this.statTexts.witch 
+            = this.add.text(X+800, Y + 30, '', textStyle).setOrigin(0, 0.5);
 
-            this.statTexts.mason = this.add.text(X+50, Y + 205, '', textStyle).setOrigin(0, 0.5);
+            this.statTexts.mason 
+            = this.add.text(X+1000, Y + 30, '', textStyle).setOrigin(0, 0.5);
            /*
             const dX = width/2;
             const dY = height-160;
@@ -1296,7 +1302,8 @@ class UIScene extends Phaser.Scene {
         this.garrisonUI ={};
         const stat = this.registry.get('stat');
         this.garrisons = [
-            {tag: 'archer', stat: stat.archer, iconIndex: 0},
+             {tag:'getto', stat: stat.manPower, iconIndex: 3},
+             {tag: 'archer', stat: stat.archer, iconIndex: 0},
              {tag: 'witch', stat: stat.witch, iconIndex: 1},
              {tag: 'mason', stat: stat.mason, iconIndex: 2}
             ];
@@ -1577,7 +1584,12 @@ class UIScene extends Phaser.Scene {
         Object.keys(this.garrisonUI).forEach(tag => {
             const comp = this.garrisonUI[tag];
             if (comp.stacktext) {
+                console.log(comp.tag);
+                if(comp.tag =='getto'){
+                    comp.stacktext.setText( `${this.stat.manPower}/${this.stat.house}`)
+                }else{
                 comp.stacktext.setText(this.stat[comp.tag]);
+                }
             }
         });
 
