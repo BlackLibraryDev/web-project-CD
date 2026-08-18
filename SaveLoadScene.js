@@ -802,7 +802,8 @@ class SaveLoadScene extends Phaser.Scene {
     }
     loadOption(){
         const saveOption = localStorage.getItem('projectCD_saveOption');
-        if(saveOption !=`null`){
+        console.log(saveOption)
+        if(saveOption !=`null` && saveOption != null){
             const data = JSON.parse(saveOption);
             //저장된 환경설정 변수가 있다면?
             if(data.loadGameData ==null) data.loadGameData ='projectCD_data1';

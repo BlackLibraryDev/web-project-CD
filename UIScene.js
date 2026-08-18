@@ -276,7 +276,7 @@ class UIScene extends Phaser.Scene {
             this.showCategory(this.currentCategory);
             this.drawHealthBar(this.healthBar, 50, 50 ); // 위치
            this.drawStatText();
-            this.statTextVisible(false);
+            //this.statTextVisible(false);
             this.wave = this.registry.get('wave');
             this.drawWaveBar(this.waveBar);
             this.setSkillUIVisibility(false);
